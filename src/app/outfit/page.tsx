@@ -17,13 +17,13 @@ type Item = {
 };
 
 type ItemWithUrl = Item & { image_url?: string | null };
+type Occasion = "casual" | "formal" | "gym" | "hike";
 
 export default function OutfitPage() {
   const [status, setStatus] = useState<string>("");
-  const [userId, setUserId] = useState<string | null>(null);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [items, setItems] = useState<ItemWithUrl[]>([]);
-  const [occasion, setOccasion] = useState<"casual" | "formal" | "gym" | "hike">("casual");
+  const [occasion, setOccasion] = useState<Occasion>("casual");
   const [suggestion, setSuggestion] = useState<ItemWithUrl[] | null>(null);
 
   useEffect(() => {
@@ -34,8 +34,6 @@ export default function OutfitPage() {
         setStatus("Please go to /auth and sign in, then return here.");
         return;
       }
-      setUserId(user.id);
-
       // Load selfie (from profiles.selfie_path)
       const { data: profile, error: pErr } = await supabase
         .from("profiles")
@@ -156,7 +154,7 @@ export default function OutfitPage() {
           <label className="text-sm">Occasion:</label>
           <select
             value={occasion}
-            onChange={(e) => setOccasion(e.target.value as any)}
+            onChange={(e) => setOccasion(e.target.value as Occasion)}
             className="border rounded px-3 py-2"
           >
             <option value="casual">casual</option>

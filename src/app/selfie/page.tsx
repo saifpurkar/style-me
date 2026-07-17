@@ -21,7 +21,6 @@ export default function SelfiePage() {
       setUserId(user.id);
       await loadSelfieFromProfile(user.id);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadSelfieFromProfile(uid: string) {

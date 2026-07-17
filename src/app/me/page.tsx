@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import type { User, AuthError } from "@supabase/supabase-js";
+
+type UserInfo = {
+  user: User | null;
+  error: AuthError | null;
+};
 
 export default function MePage() {
-  const [info, setInfo] = useState<any>(null);
+  const [info, setInfo] = useState<UserInfo | null>(null);
 
   useEffect(() => {
     (async () => {

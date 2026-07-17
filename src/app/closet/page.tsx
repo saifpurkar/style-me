@@ -103,8 +103,9 @@ export default function ClosetPage() {
       if (file) {
         imagePath = await uploadImageForUser(user.id, file);
       }
-    } catch (err: any) {
-      setStatus("Upload failed: " + (err?.message ?? "unknown error"));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown error";
+      setStatus("Upload failed: " + message);
       return;
     }
 
@@ -166,8 +167,9 @@ export default function ClosetPage() {
         setStatus("Image updated!");
         await loadItems();
       }
-    } catch (err: any) {
-      setStatus("Upload failed: " + (err?.message ?? "unknown error"));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown error";
+      setStatus("Upload failed: " + message);
     } finally {
       e.target.value = "";
       setTargetItemId(null);
