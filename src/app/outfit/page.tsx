@@ -120,45 +120,61 @@ export default function OutfitPage() {
   const formalityLabel = label(formality);
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-charcoal text-paper font-body">
       <NavBar />
       <section className="mx-auto max-w-3xl px-4 py-10">
-        <h1 className="text-3xl font-bold">Outfit</h1>
+        <h1 className="font-display font-semibold text-3xl text-paper">Outfit</h1>
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <label className="text-sm">Occasion:</label>
-          <select
-            value={occasion}
-            onChange={(e) => setOccasion(e.target.value as Occasion)}
-            className="border rounded px-3 py-2"
-          >
-            {OCCASIONS.map((o) => (
-              <option key={o} value={o}>{label(o)}</option>
-            ))}
-          </select>
+        <div className="mt-6 flex flex-wrap items-end gap-4">
+          <div>
+            <label className="block font-utility text-xs uppercase tracking-wider text-paper/70 mb-1">
+              Occasion
+            </label>
+            <select
+              value={occasion}
+              onChange={(e) => setOccasion(e.target.value as Occasion)}
+              className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] focus:outline-none focus:ring-1 focus:ring-denim"
+            >
+              {OCCASIONS.map((o) => (
+                <option key={o} value={o} className="bg-charcoal text-paper">{label(o)}</option>
+              ))}
+            </select>
+          </div>
 
           {showFormality && (
-            <>
-              <label className="text-sm">Formality:</label>
+            <div>
+              <label className="block font-utility text-xs uppercase tracking-wider text-paper/70 mb-1">
+                Formality
+              </label>
               <select
                 value={formality}
                 onChange={(e) => setFormality(e.target.value as Formality)}
-                className="border rounded px-3 py-2"
+                className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] focus:outline-none focus:ring-1 focus:ring-denim"
               >
                 {FORMALITY.map((f) => (
-                  <option key={f} value={f}>{label(f)}</option>
+                  <option key={f} value={f} className="bg-charcoal text-paper">{label(f)}</option>
                 ))}
               </select>
-            </>
+            </div>
           )}
+
+          <button
+            type="button"
+            className="ml-auto font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2 rounded-[2px] hover:opacity-90"
+          >
+            Swap Entire Outfit
+          </button>
         </div>
 
-        {status && <p className="mt-4 text-sm">{status}</p>}
+        {status && <p className="mt-4 text-sm text-paper/80">{status}</p>}
 
         {!status && outfit.missingRequired.length > 0 && (
-          <div className="mt-6 text-sm text-red-600">
+          <div className="mt-6 bg-paper text-ink border border-dashed border-brass rounded-[2px] p-4">
+            <div className="font-utility text-xs uppercase tracking-wider text-brass mb-2">
+              Missing required items
+            </div>
             {outfit.missingRequired.map((slot) => (
-              <p key={slot}>
+              <p key={slot} className="text-sm">
                 No {slot} tagged for {showFormality ? `${formalityLabel} ` : ""}{occasionLabel} yet.
               </p>
             ))}
@@ -166,23 +182,23 @@ export default function OutfitPage() {
         )}
 
         {!status && outfit.missingRequired.length === 0 && (
-          <div className="mt-8 flex flex-col items-center gap-4">
-            {outfit.slots.headgear && <OutfitCard item={outfit.slots.headgear} />}
-            {outfit.slots.eyewear && <OutfitCard item={outfit.slots.eyewear} />}
+          <div className="mt-8 bg-paper border border-dashed border-ink/40 rounded-[2px] p-6 flex flex-col items-center gap-4">
+            {outfit.slots.headgear && <OutfitCard slot="headgear" required={false} item={outfit.slots.headgear} />}
+            {outfit.slots.eyewear && <OutfitCard slot="eyewear" required={false} item={outfit.slots.eyewear} />}
 
             <div className="flex items-start justify-center gap-4">
-              {outfit.slots.watch && <OutfitCard item={outfit.slots.watch} />}
-              <OutfitCard item={outfit.slots.top!} />
-              {outfit.slots.bracelet && <OutfitCard item={outfit.slots.bracelet} />}
+              {outfit.slots.watch && <OutfitCard slot="watch" required={false} item={outfit.slots.watch} />}
+              <OutfitCard slot="top" required item={outfit.slots.top!} />
+              {outfit.slots.bracelet && <OutfitCard slot="bracelet" required={false} item={outfit.slots.bracelet} />}
             </div>
 
-            {outfit.slots.belt && <OutfitCard item={outfit.slots.belt} />}
+            {outfit.slots.belt && <OutfitCard slot="belt" required={false} item={outfit.slots.belt} />}
 
-            <OutfitCard item={outfit.slots.bottom!} />
+            <OutfitCard slot="bottom" required item={outfit.slots.bottom!} />
 
             <div className="flex items-start justify-center gap-4">
-              <OutfitCard item={outfit.slots.footwear!} />
-              {outfit.slots.bag && <OutfitCard item={outfit.slots.bag} />}
+              <OutfitCard slot="footwear" required item={outfit.slots.footwear!} />
+              {outfit.slots.bag && <OutfitCard slot="bag" required={false} item={outfit.slots.bag} />}
             </div>
           </div>
         )}
@@ -191,17 +207,20 @@ export default function OutfitPage() {
   );
 }
 
-function OutfitCard({ item }: { item: ItemWithUrl }) {
+function OutfitCard({ item, slot, required }: { item: ItemWithUrl; slot: string; required: boolean }) {
   return (
-    <div className="border rounded-lg p-3 w-40">
+    <div className="w-36 border border-ink/20 rounded-[2px] p-2 bg-paper">
+      <div className={`font-utility text-[10px] uppercase tracking-wider mb-1 ${required ? "text-denim" : "text-brass"}`}>
+        {slot}
+      </div>
       {item.image_url ? (
-        <img src={item.image_url} alt={item.name} className="w-full h-32 object-cover rounded mb-2" />
+        <img src={item.image_url} alt={item.name} className="w-full h-28 object-cover rounded-[2px] mb-1" />
       ) : (
-        <div className="w-full h-32 bg-slate-100 rounded mb-2 flex items-center justify-center text-slate-400 text-xs">
+        <div className="w-full h-28 bg-ink/5 rounded-[2px] mb-1 flex items-center justify-center text-ink/40 text-xs">
           No image
         </div>
       )}
-      <div className="text-sm font-medium">{item.name}</div>
+      <div className="text-sm font-body text-ink truncate">{item.name}</div>
     </div>
   );
 }

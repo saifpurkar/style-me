@@ -10,6 +10,16 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Style Me design system (see CLAUDE.md) */
+  --color-ink: #211f1c;
+  --color-paper: #f6f3ec;
+  --color-charcoal: #33302b;
+  --color-denim: #33475b;
+  --color-brass: #b08d57;
+  --font-display: var(--font-fraunces);
+  --font-body: var(--font-inter);
+  --font-utility: var(--font-plex-mono);
 }
 
 @media (prefers-color-scheme: dark) {
