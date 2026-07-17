@@ -1,41 +1,63 @@
-﻿# Style Me — Project Context
-
-## What this is
-AI-powered personal styling / wardrobe management app. Digitize wardrobe, get outfit recommendations matched to occasion/weather, eventually AI try-on via selfie.
+# Style Me — Project Context
 
 ## Stack
-Next.js 15.4.6, React 19.1.0, TypeScript, Tailwind v4, Supabase (auth + DB + storage), deployed via Vercel.
-Repo: https://github.com/saifpurkar/style-me.git
+- Next.js (App Router) + TypeScript + Tailwind CSS
+- Supabase: Auth (magic link), Postgres DB, Storage (private `wardrobe` bucket, RLS scoped to user_id)
+- Deployed on Vercel
 
-## Current state (as of 2026-07-16)
-**Foundation phase -- built:**
-- Auth flow, Supabase client wiring, env config
-- Wardrobe item upload (manually tested with sample items)
-- Selfie upload flow, linked via profiles.selfie_url
-- Closet skeleton, navigation/routing
+## Existing tables
+- profiles
+- items
+- outfits
+- outfit_items
 
-**Urgent -- not yet backed up:** feature directories exist locally but were never committed to git --
-src/app/auth/, src/app/closet/, src/app/me/, src/app/outfit/, src/app/selfie/, src/app/try-on/, src/components/, src/lib/.
-Last real commit was 2025-08-12 (bootstrap only). These need to be committed and pushed before anything else touches this folder.
+## Design system — follow exactly, ask before deviating
+**Colors**
+- `ink` #211F1C — primary text
+- `paper` #F6F3EC — card/surface background
+- `charcoal` #33302B — app background
+- `denim` #33475B — primary accent (required-slot controls, selects, active states)
+- `brass` #B08D57 — secondary accent (optional-slot controls, primary CTA buttons)
 
-.env.local exists at project root with Supabase keys -- not yet re-verified as valid after ~11 months of inactivity (Supabase free-tier projects can auto-pause).
+**Type**
+- Display (headers only): Fraunces, semi-bold
+- Body: Inter
+- Utility (tags, labels, category names): IBM Plex Mono, uppercase, letter-spaced
 
-**Phase 2 -- not started:**
-- AI clothing classification from photos (shirt/sneakers/jacket, color, style)
-- Outfit recommendation logic (occasion + weather based)
-- Improved closet UI (filters, cards, categories)
-- AI try-on (undecided: OpenAI vision vs. Replicate vs. other)
+**Layout**
+- Sharp to near-sharp corners (2px radius max)
+- Thin 1–1.5px rules / dashed borders instead of heavy shadows or big rounded cards
+- Outfit screen uses a flat-lay arrangement (see below), not a generic stacked list
 
-## Known open items
-- [ ] Commit + push untracked feature work to GitHub
-- [ ] Fresh npm install + npm run dev to confirm it still runs after ~11 months
-- [ ] Confirm Supabase project is still active, keys still valid
-- [ ] Folder relocation in progress: from
-      C:\Users\saifp\Projects\Style Me\style-me
-      to
-      D:\OneDrive\Work & Play\Softwares\Work\Artificial Intelligence (Including Backup)\Claude\Claude Code\Style Me
+## Data model conventions
+`items` table — columns to add/confirm:
+- `category`: enum('top','bottom','footwear','accessory')
+- `subcategory`: text, nullable — only used when category='accessory'. Values: 'headgear','eyewear','watch','bracelet','belt','bag','socks','other'
+- `occasions`: text[] — allowed values: work, wfh, dining, date, casual_hangout, special_event, travel, outdoor, gym
+- `formality`: text[] — allowed values: casual, smart_casual, business_casual, formal
 
-## Working style preferences
-- Step-by-step, no skipped steps; overview before diving into detail
-- Full code replacements preferred over partial diffs
-- Confirm before moving to the next step in multi-step work
+`outfit_items` table: `outfit_id`, `item_id`, `slot` — slot is one of: headgear, eyewear, watch, top, bracelet, belt, bottom, footwear, bag
+
+## Outfit screen — flat-lay layout order (top to bottom)
+```
+Headgear
+Eyewear
+(Watch)   Top   (Bracelet)
+Belt
+Bottom
+(Footwear)   (Bag)
+```
+- Required slots (top, bottom, footwear): Swap button only, no dismiss.
+- Optional/accessory slots (headgear, eyewear, watch, bracelet, belt, bag): Swap + dismiss (×).
+- "Swap" on any slot offers two modes: Auto-Swap (cycles to next match automatically) or Choose from Closet (opens Closet screen filtered to that category/subcategory as a picker).
+- A separate "Swap Entire Outfit" action regenerates all slots at once.
+- If a *required* slot has no matching item, show which slot is missing rather than a blank or broken state. Accessory slots with no match are simply omitted, no message needed.
+
+## Add Item flow
+- Offer both "Take Photo" and "Upload from Library" — not one or the other.
+- Tag fields (category, subcategory, occasion, formality) should eventually be AI-suggested and pre-filled, editable before save. Manual-only is fine until the AI tagging step is built.
+
+## Working style
+- Work in small, sequential steps. State the plan and which file(s) you'll touch before editing.
+- Don't modify working features (auth, existing closet upload, navigation) unless the current task requires it.
+- If something in this file conflicts with what I ask for in a session, point it out before proceeding rather than silently picking one.

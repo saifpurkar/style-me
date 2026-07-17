@@ -7,24 +7,47 @@ import NavBar from "@/components/NavBar";
 type Item = {
   id: string;
   name: string;
-  type: string;                 // shirt, tee, pants, shorts, shoes, jacket, hoodie
-  color_primary: string | null;
-  brand: string | null;
-  created_at: string;
+  category: string | null;
+  subcategory: string | null;
+  occasions: string[] | null;
+  formality: string[] | null;
   image_path: string | null;
-  occasions?: string[] | null;  // may be null in your current data
-  season?: string[] | null;
+  created_at: string;
 };
 
 type ItemWithUrl = Item & { image_url?: string | null };
-type Occasion = "casual" | "formal" | "gym" | "hike";
+
+const OCCASIONS = ["work", "wfh", "dining", "date", "casual_hangout", "special_event", "travel", "outdoor", "gym"] as const;
+type Occasion = (typeof OCCASIONS)[number];
+
+const FORMALITY = ["casual", "smart_casual", "business_casual", "formal"] as const;
+type Formality = (typeof FORMALITY)[number];
+
+const REQUIRED_SLOTS = ["top", "bottom", "footwear"] as const;
+type RequiredSlot = (typeof REQUIRED_SLOTS)[number];
+
+// Accessory slot is derived from an item's subcategory (subcategory values map
+// 1:1 to slot names, except 'socks'/'other' which have no flat-lay slot).
+const ACCESSORY_SLOTS = ["headgear", "eyewear", "watch", "bracelet", "belt", "bag"] as const;
+type AccessorySlot = (typeof ACCESSORY_SLOTS)[number];
+
+type Slot = RequiredSlot | AccessorySlot;
+
+function label(value: string): string {
+  if (value === "wfh") return "WFH";
+  return value
+    .split("_")
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
 export default function OutfitPage() {
   const [status, setStatus] = useState<string>("");
-  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [items, setItems] = useState<ItemWithUrl[]>([]);
-  const [occasion, setOccasion] = useState<Occasion>("casual");
-  const [suggestion, setSuggestion] = useState<ItemWithUrl[] | null>(null);
+  const [occasion, setOccasion] = useState<Occasion>("casual_hangout");
+  const [formality, setFormality] = useState<Formality>("casual");
+
+  const showFormality = occasion !== "gym";
 
   useEffect(() => {
     (async () => {
@@ -34,37 +57,17 @@ export default function OutfitPage() {
         setStatus("Please go to /auth and sign in, then return here.");
         return;
       }
-      // Load selfie (from profiles.selfie_path)
-      const { data: profile, error: pErr } = await supabase
-        .from("profiles")
-        .select("selfie_path")
-        .eq("id", user.id)
-        .single();
 
-      if (pErr) {
-        setStatus("Could not load profile: " + pErr.message);
-        return;
-      }
-
-      if (profile?.selfie_path) {
-        const { data: sData, error: sErr } = await supabase.storage
-          .from("wardrobe")
-          .createSignedUrl(profile.selfie_path, 60 * 60);
-        if (!sErr) setSelfieUrl(sData?.signedUrl ?? null);
-      }
-
-      // Load closet items
-      const { data: rawItems, error: iErr } = await supabase
+      const { data: rawItems, error } = await supabase
         .from("items")
-        .select("id,name,type,color_primary,brand,created_at,image_path,occasions,season")
+        .select("id,name,category,subcategory,occasions,formality,image_path,created_at")
         .order("created_at", { ascending: false });
 
-      if (iErr) {
-        setStatus("Could not load items: " + iErr.message);
+      if (error) {
+        setStatus("Could not load items: " + error.message);
         return;
       }
 
-      // Create signed URLs for any images
       const withUrls: ItemWithUrl[] = await Promise.all(
         (rawItems || []).map(async (it) => {
           if (!it.image_path) return { ...it, image_url: null };
@@ -80,143 +83,144 @@ export default function OutfitPage() {
     })();
   }, []);
 
-  // Simple rule-based filters for occasion
-  const filteredByOccasion = useMemo(() => {
-    if (!items.length) return items;
-    // If item has occasions, use them; otherwise include as general-purpose
+  const matches = useMemo(() => {
     return items.filter((it) => {
-      if (!it.occasions || it.occasions.length === 0) return true;
-      return it.occasions.includes(occasion);
+      if (!it.occasions?.includes(occasion)) return false;
+      if (showFormality && !it.formality?.includes(formality)) return false;
+      return true;
     });
-  }, [items, occasion]);
+  }, [items, occasion, formality, showFormality]);
 
-  function pick(array: ItemWithUrl[] | null | undefined, types: string[]): ItemWithUrl[] {
-    const pool = (array || []).filter((it) => types.includes(it.type));
-    // Choose first viable in each type category to keep it deterministic
-    const chosen: ItemWithUrl[] = [];
-    for (const t of types) {
-      const found = pool.find((it) => it.type === t);
-      if (found) chosen.push(found);
+  const outfit = useMemo(() => {
+    const slots: Record<Slot, ItemWithUrl | undefined> = {
+      top: undefined,
+      bottom: undefined,
+      footwear: undefined,
+      headgear: undefined,
+      eyewear: undefined,
+      watch: undefined,
+      bracelet: undefined,
+      belt: undefined,
+      bag: undefined,
+    };
+
+    for (const slot of REQUIRED_SLOTS) {
+      slots[slot] = matches.find((it) => it.category === slot);
     }
-    return chosen;
-  }
-
-  function suggestOutfit() {
-    if (!filteredByOccasion?.length) {
-      setStatus("No closet items available for suggestions yet.");
-      setSuggestion(null);
-      return;
-    }
-
-    // Minimal rules per occasion
-    let typesOrder: string[] = [];
-    if (occasion === "formal") {
-      typesOrder = ["shirt", "pants", "shoes"]; // (optionally add jacket later)
-    } else if (occasion === "gym") {
-      typesOrder = ["tee", "shorts", "shoes"];
-    } else if (occasion === "hike") {
-      typesOrder = ["tee", "pants", "shoes"]; // add jacket if cold later
-    } else {
-      // casual
-      typesOrder = ["tee", "pants", "shoes"];
-      // fallbacks: if no tee, try shirt
-      if (!filteredByOccasion.some((i) => i.type === "tee") && filteredByOccasion.some((i) => i.type === "shirt")) {
-        typesOrder = ["shirt", "pants", "shoes"];
-      }
+    for (const slot of ACCESSORY_SLOTS) {
+      slots[slot] = matches.find((it) => it.category === "accessory" && it.subcategory === slot);
     }
 
-    const chosen = pick(filteredByOccasion, typesOrder);
+    const missingRequired = REQUIRED_SLOTS.filter((slot) => !slots[slot]);
 
-    // Ensure we have at least top + bottom
-    const hasTop = chosen.some((c) => c.type === "tee" || c.type === "shirt" || c.type === "jacket" || c.type === "hoodie");
-    const hasBottom = chosen.some((c) => c.type === "pants" || c.type === "shorts");
-    if (!hasTop || !hasBottom) {
-      setStatus("Not enough variety in closet for this occasion (need a top and a bottom). Try adding more items.");
-      setSuggestion(null);
-      return;
-    }
+    return { slots, missingRequired };
+  }, [matches]);
 
-    setStatus("");
-    setSuggestion(chosen);
-  }
+  const occasionLabel = label(occasion);
+  const formalityLabel = label(formality);
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-charcoal text-paper font-body">
       <NavBar />
-      <section className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="text-3xl font-bold">Outfit Suggestions</h1>
-        <p className="text-slate-600 mt-2">
-          Choose an occasion and generate a simple outfit from your closet. We’ll improve the AI later.
-        </p>
+      <section className="mx-auto max-w-3xl px-4 py-10">
+        <h1 className="font-display font-semibold text-3xl text-paper">Outfit</h1>
 
-        {/* Controls */}
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <label className="text-sm">Occasion:</label>
-          <select
-            value={occasion}
-            onChange={(e) => setOccasion(e.target.value as Occasion)}
-            className="border rounded px-3 py-2"
-          >
-            <option value="casual">casual</option>
-            <option value="formal">formal</option>
-            <option value="gym">gym</option>
-            <option value="hike">hike</option>
-          </select>
+        <div className="mt-6 flex flex-wrap items-end gap-4">
+          <div>
+            <label className="block font-utility text-xs uppercase tracking-wider text-paper/70 mb-1">
+              Occasion
+            </label>
+            <select
+              value={occasion}
+              onChange={(e) => setOccasion(e.target.value as Occasion)}
+              className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] focus:outline-none focus:ring-1 focus:ring-denim"
+            >
+              {OCCASIONS.map((o) => (
+                <option key={o} value={o} className="bg-charcoal text-paper">{label(o)}</option>
+              ))}
+            </select>
+          </div>
+
+          {showFormality && (
+            <div>
+              <label className="block font-utility text-xs uppercase tracking-wider text-paper/70 mb-1">
+                Formality
+              </label>
+              <select
+                value={formality}
+                onChange={(e) => setFormality(e.target.value as Formality)}
+                className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] focus:outline-none focus:ring-1 focus:ring-denim"
+              >
+                {FORMALITY.map((f) => (
+                  <option key={f} value={f} className="bg-charcoal text-paper">{label(f)}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <button
-            onClick={suggestOutfit}
-            className="border rounded px-3 py-2 hover:bg-slate-50"
+            type="button"
+            className="ml-auto font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2 rounded-[2px] hover:opacity-90"
           >
-            Suggest Outfit
+            Swap Entire Outfit
           </button>
         </div>
 
-        {/* Selfie preview */}
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold">Your Selfie</h2>
-          {selfieUrl ? (
-            <img
-              src={selfieUrl}
-              alt="Your selfie"
-              className="mt-3 w-full max-w-sm rounded-lg border"
-            />
-          ) : (
-            <p className="mt-3 text-slate-600">
-              No selfie found. Go to <a className="underline" href="/selfie">/selfie</a> to upload one.
-            </p>
-          )}
-        </div>
+        {status && <p className="mt-4 text-sm text-paper/80">{status}</p>}
 
-        {/* Suggestion */}
-        <div className="mt-10">
-          <h2 className="text-xl font-semibold">Suggested Outfit</h2>
-          {status && <p className="mt-2 text-sm">{status}</p>}
-
-          {suggestion ? (
-            <div className="grid gap-4 mt-4 sm:grid-cols-3">
-              {suggestion.map((it) => (
-                <div key={it.id} className="border rounded-lg p-3">
-                  {it.image_url ? (
-                    <img
-                      src={it.image_url}
-                      alt={it.name}
-                      className="w-full h-40 object-cover rounded mb-2"
-                    />
-                  ) : (
-                    <div className="w-full h-40 bg-slate-100 rounded mb-2 flex items-center justify-center text-slate-400 text-sm">
-                      No image
-                    </div>
-                  )}
-                  <div className="font-medium">{it.name}</div>
-                  <div className="text-sm text-slate-600">{it.type}</div>
-                </div>
-              ))}
+        {!status && outfit.missingRequired.length > 0 && (
+          <div className="mt-6 bg-paper text-ink border border-dashed border-brass rounded-[2px] p-4">
+            <div className="font-utility text-xs uppercase tracking-wider text-brass mb-2">
+              Missing required items
             </div>
-          ) : (
-            <p className="mt-2 text-slate-600">Click “Suggest Outfit” to generate a combo.</p>
-          )}
-        </div>
+            {outfit.missingRequired.map((slot) => (
+              <p key={slot} className="text-sm">
+                No {slot} tagged for {showFormality ? `${formalityLabel} ` : ""}{occasionLabel} yet.
+              </p>
+            ))}
+          </div>
+        )}
+
+        {!status && outfit.missingRequired.length === 0 && (
+          <div className="mt-8 bg-paper border border-dashed border-ink/40 rounded-[2px] p-6 flex flex-col items-center gap-4">
+            {outfit.slots.headgear && <OutfitCard slot="headgear" required={false} item={outfit.slots.headgear} />}
+            {outfit.slots.eyewear && <OutfitCard slot="eyewear" required={false} item={outfit.slots.eyewear} />}
+
+            <div className="flex items-start justify-center gap-4">
+              {outfit.slots.watch && <OutfitCard slot="watch" required={false} item={outfit.slots.watch} />}
+              <OutfitCard slot="top" required item={outfit.slots.top!} />
+              {outfit.slots.bracelet && <OutfitCard slot="bracelet" required={false} item={outfit.slots.bracelet} />}
+            </div>
+
+            {outfit.slots.belt && <OutfitCard slot="belt" required={false} item={outfit.slots.belt} />}
+
+            <OutfitCard slot="bottom" required item={outfit.slots.bottom!} />
+
+            <div className="flex items-start justify-center gap-4">
+              <OutfitCard slot="footwear" required item={outfit.slots.footwear!} />
+              {outfit.slots.bag && <OutfitCard slot="bag" required={false} item={outfit.slots.bag} />}
+            </div>
+          </div>
+        )}
       </section>
     </main>
+  );
+}
+
+function OutfitCard({ item, slot, required }: { item: ItemWithUrl; slot: string; required: boolean }) {
+  return (
+    <div className="w-36 border border-ink/20 rounded-[2px] p-2 bg-paper">
+      <div className={`font-utility text-[10px] uppercase tracking-wider mb-1 ${required ? "text-denim" : "text-brass"}`}>
+        {slot}
+      </div>
+      {item.image_url ? (
+        <img src={item.image_url} alt={item.name} className="w-full h-28 object-cover rounded-[2px] mb-1" />
+      ) : (
+        <div className="w-full h-28 bg-ink/5 rounded-[2px] mb-1 flex items-center justify-center text-ink/40 text-xs">
+          No image
+        </div>
+      )}
+      <div className="text-sm font-body text-ink truncate">{item.name}</div>
+    </div>
   );
 }
