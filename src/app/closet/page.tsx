@@ -13,9 +13,22 @@ type Item = {
   brand: string | null;
   created_at: string;
   image_path: string | null;
+  category: string | null;
+  subcategory: string | null;
+  occasions: string[] | null;
+  formality: string[] | null;
 };
 
 type ItemWithUrl = Item & { image_url?: string | null };
+
+const CATEGORIES = ["top", "bottom", "footwear", "accessory"] as const;
+const SUBCATEGORIES = ["headgear", "eyewear", "watch", "bracelet", "belt", "bag", "socks", "other"] as const;
+const OCCASIONS = ["work", "wfh", "dining", "date", "casual_hangout", "special_event", "travel", "outdoor", "gym"] as const;
+const FORMALITY = ["casual", "smart_casual", "business_casual", "formal"] as const;
+
+function toggleValue(arr: string[], val: string): string[] {
+  return arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val];
+}
 
 export default function ClosetPage() {
   const [items, setItems] = useState<ItemWithUrl[]>([]);
@@ -23,6 +36,10 @@ export default function ClosetPage() {
   const [name, setName] = useState("");
   const [type, setType] = useState("shirt");
   const [file, setFile] = useState<File | null>(null);
+  const [category, setCategory] = useState<string>("top");
+  const [subcategory, setSubcategory] = useState<string>("");
+  const [occasions, setOccasions] = useState<string[]>([]);
+  const [formality, setFormality] = useState<string[]>([]);
 
   // for per-item image upload
   const hiddenFileRef = useRef<HTMLInputElement | null>(null);
@@ -41,7 +58,7 @@ export default function ClosetPage() {
     setStatus("Loading...");
     const { data, error } = await supabase
       .from("items")
-      .select("id,name,type,color_primary,brand,created_at,image_path")
+      .select("id,name,type,color_primary,brand,created_at,image_path,category,subcategory,occasions,formality")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -119,7 +136,10 @@ export default function ClosetPage() {
       notes: null,
       image_path: imagePath,
       season: null,
-      occasions: null,
+      category: category || null,
+      subcategory: category === "accessory" ? (subcategory || null) : null,
+      occasions: occasions.length ? occasions : null,
+      formality: formality.length ? formality : null,
     });
 
     if (error) {
@@ -128,6 +148,10 @@ export default function ClosetPage() {
       setName("");
       setType("shirt");
       setFile(null);
+      setCategory("top");
+      setSubcategory("");
+      setOccasions([]);
+      setFormality([]);
       const addFormFile = document.querySelector('#add-form-file') as HTMLInputElement | null;
       if (addFormFile) addFormFile.value = "";
       setStatus("Added!");
@@ -220,6 +244,64 @@ export default function ClosetPage() {
           <button type="submit" className="border rounded px-3 py-2 hover:bg-slate-50">
             Add Item
           </button>
+
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setSubcategory("");
+            }}
+            className="border rounded px-3 py-2"
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+
+          {category === "accessory" && (
+            <select
+              value={subcategory}
+              onChange={(e) => setSubcategory(e.target.value)}
+              className="border rounded px-3 py-2"
+            >
+              <option value="">— subcategory —</option>
+              {SUBCATEGORIES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
+
+          <fieldset className="border rounded px-3 py-2 sm:col-span-2">
+            <legend className="text-sm text-slate-600 px-1">Occasions</legend>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {OCCASIONS.map((o) => (
+                <label key={o} className="text-sm flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={occasions.includes(o)}
+                    onChange={() => setOccasions(toggleValue(occasions, o))}
+                  />
+                  {o}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset className="border rounded px-3 py-2 sm:col-span-2">
+            <legend className="text-sm text-slate-600 px-1">Formality</legend>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {FORMALITY.map((f) => (
+                <label key={f} className="text-sm flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={formality.includes(f)}
+                    onChange={() => setFormality(toggleValue(formality, f))}
+                  />
+                  {f}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         </form>
 
         {/* Hidden input used for per-item "Change image" */}
@@ -255,6 +337,17 @@ export default function ClosetPage() {
               <div className="text-sm text-slate-600">{it.type}</div>
               {it.color_primary && <div className="text-sm">Color: {it.color_primary}</div>}
               {it.brand && <div className="text-sm">Brand: {it.brand}</div>}
+              {it.category && (
+                <div className="text-xs text-slate-500 mt-1">
+                  {it.category}{it.subcategory ? ` / ${it.subcategory}` : ""}
+                </div>
+              )}
+              {it.formality && it.formality.length > 0 && (
+                <div className="text-xs text-slate-500">Formality: {it.formality.join(", ")}</div>
+              )}
+              {it.occasions && it.occasions.length > 0 && (
+                <div className="text-xs text-slate-500">Occasions: {it.occasions.join(", ")}</div>
+              )}
 
               <div className="mt-3 flex gap-2">
                 <button
