@@ -45,6 +45,13 @@ export default function ClosetPage() {
   const hiddenFileRef = useRef<HTMLInputElement | null>(null);
   const [targetItemId, setTargetItemId] = useState<string | null>(null);
 
+  // for per-item tag editing
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editCategory, setEditCategory] = useState<string>("top");
+  const [editSubcategory, setEditSubcategory] = useState<string>("");
+  const [editOccasions, setEditOccasions] = useState<string[]>([]);
+  const [editFormality, setEditFormality] = useState<string[]>([]);
+
   async function createSigned(it: Item): Promise<ItemWithUrl> {
     if (!it.image_path) return { ...it, image_url: null };
     const { data: urlData, error: urlErr } = await supabase
@@ -200,6 +207,46 @@ export default function ClosetPage() {
     }
   };
 
+  // Begin editing tags for an EXISTING item
+  const startEdit = (it: ItemWithUrl) => {
+    setEditingId(it.id);
+    setEditCategory(it.category || "top");
+    setEditSubcategory(it.subcategory || "");
+    setEditOccasions(it.occasions || []);
+    setEditFormality(it.formality || []);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const saveEdit = async (itemId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setStatus("Please sign in at /auth, then return here.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("items")
+      .update({
+        category: editCategory || null,
+        subcategory: editCategory === "accessory" ? (editSubcategory || null) : null,
+        occasions: editOccasions.length ? editOccasions : null,
+        formality: editFormality.length ? editFormality : null,
+      })
+      .eq("id", itemId)
+      .eq("user_id", user.id); // RLS safety
+
+    if (error) {
+      setStatus("Update failed: " + error.message);
+    } else {
+      setStatus("Tags updated!");
+      setEditingId(null);
+      await loadItems();
+    }
+  };
+
   return (
     <main className="min-h-screen bg-white">
       <NavBar />
@@ -337,27 +384,115 @@ export default function ClosetPage() {
               <div className="text-sm text-slate-600">{it.type}</div>
               {it.color_primary && <div className="text-sm">Color: {it.color_primary}</div>}
               {it.brand && <div className="text-sm">Brand: {it.brand}</div>}
-              {it.category && (
-                <div className="text-xs text-slate-500 mt-1">
-                  {it.category}{it.subcategory ? ` / ${it.subcategory}` : ""}
-                </div>
-              )}
-              {it.formality && it.formality.length > 0 && (
-                <div className="text-xs text-slate-500">Formality: {it.formality.join(", ")}</div>
-              )}
-              {it.occasions && it.occasions.length > 0 && (
-                <div className="text-xs text-slate-500">Occasions: {it.occasions.join(", ")}</div>
-              )}
+              {editingId === it.id ? (
+                <div className="mt-2 grid gap-2 border-t pt-2">
+                  <select
+                    value={editCategory}
+                    onChange={(e) => {
+                      setEditCategory(e.target.value);
+                      setEditSubcategory("");
+                    }}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
 
-              <div className="mt-3 flex gap-2">
-                <button
-                  className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
-                  onClick={() => onClickChangeImage(it.id)}
-                  type="button"
-                >
-                  {it.image_url ? "Change image" : "Add image"}
-                </button>
-              </div>
+                  {editCategory === "accessory" && (
+                    <select
+                      value={editSubcategory}
+                      onChange={(e) => setEditSubcategory(e.target.value)}
+                      className="border rounded px-2 py-1 text-sm"
+                    >
+                      <option value="">— subcategory —</option>
+                      {SUBCATEGORIES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  <fieldset className="border rounded px-2 py-1">
+                    <legend className="text-xs text-slate-600 px-1">Occasions</legend>
+                    <div className="flex flex-wrap gap-x-2 gap-y-1">
+                      {OCCASIONS.map((o) => (
+                        <label key={o} className="text-xs flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            checked={editOccasions.includes(o)}
+                            onChange={() => setEditOccasions(toggleValue(editOccasions, o))}
+                          />
+                          {o}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="border rounded px-2 py-1">
+                    <legend className="text-xs text-slate-600 px-1">Formality</legend>
+                    <div className="flex flex-wrap gap-x-2 gap-y-1">
+                      {FORMALITY.map((f) => (
+                        <label key={f} className="text-xs flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            checked={editFormality.includes(f)}
+                            onChange={() => setEditFormality(toggleValue(editFormality, f))}
+                          />
+                          {f}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
+                      onClick={() => saveEdit(it.id)}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
+                      onClick={cancelEdit}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {it.category && (
+                    <div className="text-xs text-slate-500 mt-1">
+                      {it.category}{it.subcategory ? ` / ${it.subcategory}` : ""}
+                    </div>
+                  )}
+                  {it.formality && it.formality.length > 0 && (
+                    <div className="text-xs text-slate-500">Formality: {it.formality.join(", ")}</div>
+                  )}
+                  {it.occasions && it.occasions.length > 0 && (
+                    <div className="text-xs text-slate-500">Occasions: {it.occasions.join(", ")}</div>
+                  )}
+
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
+                      onClick={() => onClickChangeImage(it.id)}
+                      type="button"
+                    >
+                      {it.image_url ? "Change image" : "Add image"}
+                    </button>
+                    <button
+                      className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
+                      onClick={() => startEdit(it)}
+                      type="button"
+                    >
+                      Edit tags
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
 
