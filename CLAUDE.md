@@ -67,10 +67,13 @@ Bottom
 - `main` is up to date with `origin/main`. Per-item tag editing on the Closet screen is merged (PR #3). `npm run build` passes with no errors (only `<img>` warnings).
 - Build Session 1 is done: items taxonomy migration, tagging fields in the Add Item form, Outfit screen with occasion/formality slot filtering, and the design system applied to the Outfit screen only.
 
+- Session 2 Swap is done and live (2026-10-18): Auto-swap cycles matching items; Choose from Closet goes to `/closet?pick=<slot>` and returns the pick; accessory slots have a dismiss (×) with "+ slot" chips to restore; Swap Entire Outfit re-picks every slot. The outfit (occasion, formality, picks, dismissed slots) is kept in `sessionStorage` (`styleme.outfit.v1`; the Closet hands back its pick via `styleme.pick.v1`). Swap logic is in `src/lib/outfit.ts` and was tested on its own and on the live site.
+
 **Not done yet**
 - Design system is not applied to Closet, Auth, Selfie, Try-On or NavBar.
 - `globals.css` body still uses the default white background and Arial; `layout.tsx` metadata title is still "Create Next App".
-- Session 2: Swap (Auto + Choose from Closet), Dismiss on accessory slots.
+- Closet screen polish (design system, Take Photo / Upload from Library on Add Item).
+- Photos for the 3 restored items (the user will add them all at once later).
 - AI tagging (Should-have priority).
 
 **Login (working as of 2026-10-18)**
