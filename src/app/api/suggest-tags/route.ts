@@ -54,7 +54,9 @@ export async function POST(request: Request) {
   const client = new Anthropic();
   try {
     const response = await client.messages.parse({
-      model: "claude-opus-5-5",
+      // The small, cheap model is plenty for tagging a clothing photo; move up a tier if
+      // suggestions turn out poor.
+      model: "claude-haiku-5-5",
       max_tokens: 4000,
       system: TAGGING_SYSTEM_PROMPT,
       messages: [
