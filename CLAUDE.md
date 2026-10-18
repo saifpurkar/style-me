@@ -76,7 +76,7 @@ Bottom
 **Not done yet**
 - Design system is not applied to the Home, Auth, Selfie, Try-On and Me pages (they are still on plain white). Outfit, Closet and the NavBar are done.
 - Photos for the 3 restored items (the user will add them all at once later).
-- AI tagging is built and deployed but NOT yet turned on: it needs the `ANTHROPIC_API_KEY` environment variable in Vercel (Production). Until then the Add Item form says "AI suggestions aren't set up yet" and stays manual. Once the key is set and redeployed, test it end to end with a real clothing photo (it has only been tested without a key, plus unit tests of the cleanup rules).
+- AI tagging is ON as of 2026-10-18 (`ANTHROPIC_API_KEY` is set in Vercel Production and the account has credit). It was tested end to end with a drawn navy t-shirt picture (came back as "Navy Crew Tee", tee, top, casual). It has not yet been tried on real clothing photos; judge the quality when the user adds photos and move up to `claude-sonnet-5-5` in `route.ts` if suggestions are poor. If suggestions stop working, check the Anthropic Console credit balance first: an empty balance shows "AI suggestions are paused: the Anthropic account is out of credit".
 
 **Login (working as of 2026-10-18)**
 - Supabase project is `style-me-2` (org "Mochi N Boba Inc.", free tier). Free-tier projects pause after inactivity. It was found paused on 2026-10-18 and showed 'Restoration in progress'; it is now Healthy. Check the dashboard shows Healthy before testing login.
