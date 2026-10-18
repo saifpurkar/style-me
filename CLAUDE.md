@@ -69,10 +69,10 @@ Bottom
 
 - Session 2 Swap is done and live (2026-10-18): Auto-swap cycles matching items; Choose from Closet goes to `/closet?pick=<slot>` and returns the pick; accessory slots have a dismiss (×) with "+ slot" chips to restore; Swap Entire Outfit re-picks every slot. The outfit (occasion, formality, picks, dismissed slots) is kept in `sessionStorage` (`styleme.outfit.v1`; the Closet hands back its pick via `styleme.pick.v1`). Swap logic is in `src/lib/outfit.ts` and was tested on its own and on the live site.
 
+- Closet polish is done and live (2026-10-18): design system applied to Closet and NavBar, Add Item offers both Take Photo (`capture="environment"`, opens the camera on phones; on desktop it opens the file picker) and Upload from Library, page title is "Style Me", base font is Inter. `globals.css` body is charcoal with ink text; the old OS dark-mode override was removed because it made text unreadable on the white pages.
+
 **Not done yet**
-- Design system is not applied to Closet, Auth, Selfie, Try-On or NavBar.
-- `globals.css` body still uses the default white background and Arial; `layout.tsx` metadata title is still "Create Next App".
-- Closet screen polish (design system, Take Photo / Upload from Library on Add Item).
+- Design system is not applied to the Home, Auth, Selfie, Try-On and Me pages (they are still on plain white). Outfit, Closet and the NavBar are done.
 - Photos for the 3 restored items (the user will add them all at once later).
 - AI tagging (Should-have priority).
 
