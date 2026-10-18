@@ -533,7 +533,7 @@ function WeatherPanel({
           )}
           {on && fellBack.length > 0 && (
             <p className="mt-1 text-xs text-brass">
-              Nothing you own for {fellBack.join(", ")} suits this weather, so those show your other options.
+              Nothing you own for {fellBack.join(", ")} suits this weather, so your other options are shown.
             </p>
           )}
 
