@@ -32,6 +32,54 @@ function toggleValue(arr: string[], val: string): string[] {
   return arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val];
 }
 
+function pretty(value: string): string {
+  return value.replace(/_/g, " ");
+}
+
+// Shared look (design system: ink/paper/charcoal/denim/brass, 2px corners, thin rules)
+const fieldCls =
+  "border border-ink/30 bg-paper text-ink px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:ring-1 focus:ring-denim";
+const labelCls = "font-utility text-[10px] uppercase tracking-wider text-ink/60";
+const primaryBtn =
+  "font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2 rounded-[2px] hover:opacity-90";
+const outlineBtn =
+  "font-utility text-[10px] uppercase tracking-wider border border-denim text-denim px-3 py-1.5 rounded-[2px] hover:bg-denim hover:text-paper";
+const chipCls =
+  "font-utility text-[10px] uppercase tracking-wider border border-ink/25 text-ink/80 px-1.5 py-0.5 rounded-[2px]";
+
+function CheckGroup({
+  legend,
+  options,
+  selected,
+  onToggle,
+  className = "",
+}: {
+  legend: string;
+  options: readonly string[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  className?: string;
+}) {
+  return (
+    <fieldset className={`border border-ink/30 rounded-[2px] px-3 py-2 ${className}`}>
+      <legend className={`${labelCls} px-1`}>{legend}</legend>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {options.map((o) => (
+          <label key={o} className="text-xs flex items-center gap-1 text-ink">
+            <input
+              type="checkbox"
+              className="accent-denim"
+              checked={selected.includes(o)}
+              onChange={() => onToggle(o)}
+            />
+            {pretty(o)}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export default function ClosetPage() {
   const router = useRouter();
   const [items, setItems] = useState<ItemWithUrl[]>([]);
@@ -52,6 +100,11 @@ export default function ClosetPage() {
   const [occasions, setOccasions] = useState<string[]>([]);
   const [formality, setFormality] = useState<string[]>([]);
 
+  // Add Item photo: one input opens the camera (phones), the other the photo library.
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const libraryInputRef = useRef<HTMLInputElement | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   // for per-item image upload
   const hiddenFileRef = useRef<HTMLInputElement | null>(null);
   const [targetItemId, setTargetItemId] = useState<string | null>(null);
@@ -62,6 +115,17 @@ export default function ClosetPage() {
   const [editSubcategory, setEditSubcategory] = useState<string>("");
   const [editOccasions, setEditOccasions] = useState<string[]>([]);
   const [editFormality, setEditFormality] = useState<string[]>([]);
+
+  // Show a small preview of the chosen photo, and free it when it changes.
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   async function createSigned(it: Item): Promise<ItemWithUrl> {
     if (!it.image_path) return { ...it, image_url: null };
@@ -170,8 +234,8 @@ export default function ClosetPage() {
       setSubcategory("");
       setOccasions([]);
       setFormality([]);
-      const addFormFile = document.querySelector('#add-form-file') as HTMLInputElement | null;
-      if (addFormFile) addFormFile.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
+      if (libraryInputRef.current) libraryInputRef.current.value = "";
       setStatus("Added!");
       await loadItems();
     }
@@ -272,114 +336,147 @@ export default function ClosetPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-charcoal text-paper font-body">
       <NavBar />
       <section className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="text-3xl font-bold">{pickSlot ? `Choose ${pickSlot}` : "Closet"}</h1>
+        <h1 className="font-display font-semibold text-3xl text-paper">
+          {pickSlot ? `Choose ${pickSlot}` : "Closet"}
+        </h1>
 
         {pickSlot && (
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-paper/70">
             Pick an item for your outfit&apos;s {pickSlot} slot, or{" "}
-            <a href="/outfit" className="underline">go back to the outfit</a>.
+            <a href="/outfit" className="underline hover:text-brass">go back to the outfit</a>.
           </p>
         )}
 
         {/* Status / messages */}
-        {status && <p className="mt-3 text-sm">{status}</p>}
+        {status && <p className="mt-3 text-sm text-paper/80">{status}</p>}
 
         {/* Add Item form (hidden while picking an item for an outfit) */}
-        <form onSubmit={insertItem} className={`mt-6 grid gap-3 sm:grid-cols-4 ${pickSlot ? "hidden" : ""}`}>
-          <input
-            type="text"
-            placeholder="Item name (e.g., Navy Polo)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="border rounded px-3 py-2"
-          />
+        <form
+          onSubmit={insertItem}
+          className={`mt-6 bg-paper text-ink border border-dashed border-ink/40 rounded-[2px] p-5 grid gap-4 sm:grid-cols-2 ${pickSlot ? "hidden" : ""}`}
+        >
+          <div className="sm:col-span-2 font-utility text-xs uppercase tracking-wider text-denim">Add item</div>
 
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="border rounded px-3 py-2"
-          >
-            <option value="shirt">shirt</option>
-            <option value="tee">tee</option>
-            <option value="pants">pants</option>
-            <option value="shorts">shorts</option>
-            <option value="shoes">shoes</option>
-            <option value="jacket">jacket</option>
-            <option value="hoodie">hoodie</option>
-          </select>
+          <label className="grid gap-1">
+            <span className={labelCls}>Name</span>
+            <input
+              type="text"
+              placeholder="e.g., Navy Polo"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={fieldCls}
+            />
+          </label>
 
-          <input
-            id="add-form-file"
-            type="file"
-            accept="image/*"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="border rounded px-3 py-2"
-          />
+          <label className="grid gap-1">
+            <span className={labelCls}>Type</span>
+            <select value={type} onChange={(e) => setType(e.target.value)} className={fieldCls}>
+              <option value="shirt">shirt</option>
+              <option value="tee">tee</option>
+              <option value="pants">pants</option>
+              <option value="shorts">shorts</option>
+              <option value="shoes">shoes</option>
+              <option value="jacket">jacket</option>
+              <option value="hoodie">hoodie</option>
+            </select>
+          </label>
 
-          <button type="submit" className="border rounded px-3 py-2 hover:bg-slate-50">
-            Add Item
-          </button>
+          {/* Photo: Take Photo and Upload from Library are both offered */}
+          <div className="sm:col-span-2 grid gap-2">
+            <span className={labelCls}>Photo</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={outlineBtn} onClick={() => cameraInputRef.current?.click()}>
+                Take photo
+              </button>
+              <button type="button" className={outlineBtn} onClick={() => libraryInputRef.current?.click()}>
+                Upload from library
+              </button>
+              {file && (
+                <>
+                  <span className="text-xs text-ink/70 truncate max-w-[14rem]">{file.name}</span>
+                  <button
+                    type="button"
+                    className="font-utility text-[10px] uppercase tracking-wider text-ink/60 underline hover:text-ink"
+                    onClick={() => {
+                      setFile(null);
+                      if (cameraInputRef.current) cameraInputRef.current.value = "";
+                      if (libraryInputRef.current) libraryInputRef.current.value = "";
+                    }}
+                  >
+                    Remove
+                  </button>
+                </>
+              )}
+            </div>
+            {previewUrl && (
+              <img src={previewUrl} alt="Selected photo" className="h-24 w-24 object-cover rounded-[2px] border border-ink/20" />
+            )}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="hidden"
+            />
+            <input
+              ref={libraryInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="hidden"
+            />
+          </div>
 
-          <select
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setSubcategory("");
-            }}
-            className="border rounded px-3 py-2"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-
-          {category === "accessory" && (
+          <label className="grid gap-1">
+            <span className={labelCls}>Category</span>
             <select
-              value={subcategory}
-              onChange={(e) => setSubcategory(e.target.value)}
-              className="border rounded px-3 py-2"
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                setSubcategory("");
+              }}
+              className={fieldCls}
             >
-              <option value="">— subcategory —</option>
-              {SUBCATEGORIES.map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
+          </label>
+
+          {category === "accessory" && (
+            <label className="grid gap-1">
+              <span className={labelCls}>Subcategory</span>
+              <select value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className={fieldCls}>
+                <option value="">— subcategory —</option>
+                {SUBCATEGORIES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
           )}
 
-          <fieldset className="border rounded px-3 py-2 sm:col-span-2">
-            <legend className="text-sm text-slate-600 px-1">Occasions</legend>
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-              {OCCASIONS.map((o) => (
-                <label key={o} className="text-sm flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={occasions.includes(o)}
-                    onChange={() => setOccasions(toggleValue(occasions, o))}
-                  />
-                  {o}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <CheckGroup
+            legend="Occasions"
+            options={OCCASIONS}
+            selected={occasions}
+            onToggle={(o) => setOccasions(toggleValue(occasions, o))}
+            className="sm:col-span-2"
+          />
+          <CheckGroup
+            legend="Formality"
+            options={FORMALITY}
+            selected={formality}
+            onToggle={(f) => setFormality(toggleValue(formality, f))}
+            className="sm:col-span-2"
+          />
 
-          <fieldset className="border rounded px-3 py-2 sm:col-span-2">
-            <legend className="text-sm text-slate-600 px-1">Formality</legend>
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-              {FORMALITY.map((f) => (
-                <label key={f} className="text-sm flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={formality.includes(f)}
-                    onChange={() => setFormality(toggleValue(formality, f))}
-                  />
-                  {f}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <div className="sm:col-span-2">
+            <button type="submit" className={primaryBtn}>Add item</button>
+          </div>
         </form>
 
         {/* Hidden input used for per-item "Change image" */}
@@ -394,36 +491,38 @@ export default function ClosetPage() {
         {/* Items grid */}
         <div className="grid gap-4 mt-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {visibleItems.map((it) => (
-            <div key={it.id} className="border rounded-lg p-4">
+            <div key={it.id} className="bg-paper text-ink border border-ink/20 rounded-[2px] p-4">
               {/* Thumbnail if present */}
               {it.image_url ? (
                 <img
                   src={it.image_url}
                   alt={it.name}
-                  className="w-full h-40 object-cover rounded mb-3"
+                  className="w-full h-40 object-cover rounded-[2px] mb-3"
                 />
               ) : (
-                <div className="w-full h-40 bg-slate-100 rounded mb-3 flex items-center justify-center text-slate-400 text-sm">
+                <div className="w-full h-40 bg-ink/5 rounded-[2px] mb-3 flex items-center justify-center text-ink/40 text-sm">
                   No image
                 </div>
               )}
 
-              <div className="text-xs text-slate-500">
-                {new Date(it.created_at).toLocaleString()}
+              <div className="font-semibold">{it.name}</div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink/60">
+                <span>{it.type}</span>
+                <span>·</span>
+                <span>{new Date(it.created_at).toLocaleDateString()}</span>
               </div>
-              <div className="mt-1 font-semibold">{it.name}</div>
-              <div className="text-sm text-slate-600">{it.type}</div>
               {it.color_primary && <div className="text-sm">Color: {it.color_primary}</div>}
               {it.brand && <div className="text-sm">Brand: {it.brand}</div>}
+
               {editingId === it.id ? (
-                <div className="mt-2 grid gap-2 border-t pt-2">
+                <div className="mt-3 grid gap-2 border-t border-dashed border-ink/30 pt-3">
                   <select
                     value={editCategory}
                     onChange={(e) => {
                       setEditCategory(e.target.value);
                       setEditSubcategory("");
                     }}
-                    className="border rounded px-2 py-1 text-sm"
+                    className={fieldCls}
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c}>{c}</option>
@@ -434,7 +533,7 @@ export default function ClosetPage() {
                     <select
                       value={editSubcategory}
                       onChange={(e) => setEditSubcategory(e.target.value)}
-                      className="border rounded px-2 py-1 text-sm"
+                      className={fieldCls}
                     >
                       <option value="">— subcategory —</option>
                       {SUBCATEGORIES.map((s) => (
@@ -443,51 +542,24 @@ export default function ClosetPage() {
                     </select>
                   )}
 
-                  <fieldset className="border rounded px-2 py-1">
-                    <legend className="text-xs text-slate-600 px-1">Occasions</legend>
-                    <div className="flex flex-wrap gap-x-2 gap-y-1">
-                      {OCCASIONS.map((o) => (
-                        <label key={o} className="text-xs flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            checked={editOccasions.includes(o)}
-                            onChange={() => setEditOccasions(toggleValue(editOccasions, o))}
-                          />
-                          {o}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-
-                  <fieldset className="border rounded px-2 py-1">
-                    <legend className="text-xs text-slate-600 px-1">Formality</legend>
-                    <div className="flex flex-wrap gap-x-2 gap-y-1">
-                      {FORMALITY.map((f) => (
-                        <label key={f} className="text-xs flex items-center gap-1">
-                          <input
-                            type="checkbox"
-                            checked={editFormality.includes(f)}
-                            onChange={() => setEditFormality(toggleValue(editFormality, f))}
-                          />
-                          {f}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
+                  <CheckGroup
+                    legend="Occasions"
+                    options={OCCASIONS}
+                    selected={editOccasions}
+                    onToggle={(o) => setEditOccasions(toggleValue(editOccasions, o))}
+                  />
+                  <CheckGroup
+                    legend="Formality"
+                    options={FORMALITY}
+                    selected={editFormality}
+                    onToggle={(f) => setEditFormality(toggleValue(editFormality, f))}
+                  />
 
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
-                      onClick={() => saveEdit(it.id)}
-                    >
+                    <button type="button" className={primaryBtn} onClick={() => saveEdit(it.id)}>
                       Save
                     </button>
-                    <button
-                      type="button"
-                      className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
-                      onClick={cancelEdit}
-                    >
+                    <button type="button" className={outlineBtn} onClick={cancelEdit}>
                       Cancel
                     </button>
                   </div>
@@ -495,40 +567,36 @@ export default function ClosetPage() {
               ) : (
                 <>
                   {it.category && (
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div className="mt-2 font-utility text-[10px] uppercase tracking-wider text-denim">
                       {it.category}{it.subcategory ? ` / ${it.subcategory}` : ""}
                     </div>
                   )}
                   {it.formality && it.formality.length > 0 && (
-                    <div className="text-xs text-slate-500">Formality: {it.formality.join(", ")}</div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {it.formality.map((f) => (
+                        <span key={f} className={chipCls}>{pretty(f)}</span>
+                      ))}
+                    </div>
                   )}
                   {it.occasions && it.occasions.length > 0 && (
-                    <div className="text-xs text-slate-500">Occasions: {it.occasions.join(", ")}</div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {it.occasions.map((o) => (
+                        <span key={o} className={`${chipCls} border-brass text-brass`}>{pretty(o)}</span>
+                      ))}
+                    </div>
                   )}
 
                   <div className="mt-3 flex gap-2">
                     {pickSlot ? (
-                      <button
-                        className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
-                        onClick={() => pickItem(it)}
-                        type="button"
-                      >
+                      <button className={primaryBtn} onClick={() => pickItem(it)} type="button">
                         Use this item
                       </button>
                     ) : (
                       <>
-                        <button
-                          className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
-                          onClick={() => onClickChangeImage(it.id)}
-                          type="button"
-                        >
+                        <button className={outlineBtn} onClick={() => onClickChangeImage(it.id)} type="button">
                           {it.image_url ? "Change image" : "Add image"}
                         </button>
-                        <button
-                          className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
-                          onClick={() => startEdit(it)}
-                          type="button"
-                        >
+                        <button className={outlineBtn} onClick={() => startEdit(it)} type="button">
                           Edit tags
                         </button>
                       </>
@@ -540,7 +608,7 @@ export default function ClosetPage() {
           ))}
 
           {visibleItems.length === 0 && !status && (
-            <p className="text-slate-600 mt-4">
+            <p className="text-paper/70 mt-4">
               {pickSlot ? `No ${pickSlot} items in your closet yet.` : "No items yet."}
             </p>
           )}
