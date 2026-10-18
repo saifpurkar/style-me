@@ -90,8 +90,11 @@ export async function POST(request: Request) {
       return fail("AI suggestions are busy right now. Try again in a minute.", 429);
     }
     if (error instanceof Anthropic.BadRequestError) {
-      // Also what an empty credit balance looks like.
       console.error("suggest-tags: bad request:", error.message);
+      // An empty credit balance arrives as a bad request; say so plainly so the owner knows what to fix.
+      if (/credit balance/i.test(error.message)) {
+        return fail("AI suggestions are paused: the Anthropic account is out of credit.", 503);
+      }
       return fail("AI suggestions aren't available right now.", 503);
     }
     if (error instanceof Anthropic.APIError) {
