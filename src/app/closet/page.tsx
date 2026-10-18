@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import NavBar from "@/components/NavBar";
-import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
+import { uploadItemPhoto } from "@/lib/photos";
+import BulkUpload from "@/components/BulkUpload";
 import { isSlot, slotOf, type Slot } from "@/lib/outfit";
 import { shrinkToJpegBase64 } from "@/lib/image";
 import type { TagSuggestion } from "@/lib/tagging";
@@ -35,6 +36,21 @@ const FORMALITY = ["casual", "smart_casual", "business_casual", "formal"] as con
 
 function toggleValue(arr: string[], val: string): string[] {
   return arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val];
+}
+
+// Buttons that sit on the dark page background (the shared ones are for paper panels).
+const darkBtn =
+  "font-utility text-[10px] uppercase tracking-wider border border-brass text-brass px-3 py-1.5 rounded-[2px] hover:bg-brass hover:text-ink";
+const filterOff =
+  "font-utility text-[10px] uppercase tracking-wider border border-paper/30 text-paper/80 px-3 py-1.5 rounded-[2px] hover:border-brass";
+const filterOn =
+  "font-utility text-[10px] uppercase tracking-wider border border-brass bg-brass text-ink px-3 py-1.5 rounded-[2px]";
+
+// An item still needs tagging if the outfit logic can't fully use it yet.
+function needsTags(it: Item): boolean {
+  if (!it.category || !it.occasions?.length || !it.formality?.length) return true;
+  if (it.category === "accessory") return !it.subcategory;
+  return !it.warmth;
 }
 
 function pretty(value: string): string {
@@ -86,6 +102,13 @@ export default function ClosetPage() {
     if (slot && isSlot(slot)) setPickSlot(slot);
   }, []);
   const [status, setStatus] = useState<string>("");
+
+  // Closet filters, and the "add many photos" panel
+  const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | (typeof CATEGORIES)[number]>("all");
+  const [onlyNeedsTags, setOnlyNeedsTags] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
+
   const [name, setName] = useState("");
   const [type, setType] = useState("shirt");
   const [file, setFile] = useState<File | null>(null);
@@ -215,23 +238,8 @@ export default function ClosetPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Upload a file to wardrobe/<userId>/<uuid>.<ext>
-  async function uploadImageForUser(userId: string, file: File) {
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const filename = `${uuidv4()}.${ext}`;
-    const path = `${userId}/${filename}`;
-
-    const { error } = await supabase.storage
-      .from("wardrobe")
-      .upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type || "image/jpeg",
-      });
-
-    if (error) throw new Error(error.message);
-    return path;
-  }
+  // Upload a (shrunken) photo to wardrobe/<userId>/<uuid>.<ext>
+  const uploadImageForUser = uploadItemPhoto;
 
   // Add NEW item (name + type + optional image)
   const insertItem = async (e: React.FormEvent) => {
@@ -335,8 +343,17 @@ export default function ClosetPage() {
     }
   };
 
-  // In pick mode only show items that belong in the slot being filled.
-  const visibleItems = pickSlot ? items.filter((it) => slotOf(it) === pickSlot) : items;
+  // In pick mode only show items that belong in the slot being filled; the filters narrow it further.
+  const needle = query.trim().toLowerCase();
+  const slotItems = pickSlot ? items.filter((it) => slotOf(it) === pickSlot) : items;
+  const visibleItems = slotItems.filter((it) => {
+    if (needle && !it.name.toLowerCase().includes(needle)) return false;
+    if (!pickSlot && categoryFilter !== "all" && it.category !== categoryFilter) return false;
+    if (onlyNeedsTags && !needsTags(it)) return false;
+    return true;
+  });
+  const needsTagsCount = slotItems.filter(needsTags).length;
+  const filtering = needle !== "" || (!pickSlot && categoryFilter !== "all") || onlyNeedsTags;
 
   const pickItem = (it: ItemWithUrl) => {
     if (!pickSlot) return;
@@ -407,6 +424,16 @@ export default function ClosetPage() {
 
         {/* Status / messages */}
         {status && <p className="mt-3 text-sm text-paper/80">{status}</p>}
+
+        {/* Add many photos at once (not while picking an item for an outfit) */}
+        {!pickSlot && (
+          <div className="mt-4">
+            <button type="button" className={darkBtn} onClick={() => setShowBulk((v) => !v)}>
+              {showBulk ? "Hide bulk upload" : "Add many photos at once"}
+            </button>
+            {showBulk && <BulkUpload onDone={loadItems} />}
+          </div>
+        )}
 
         {/* Add Item form (hidden while picking an item for an outfit) */}
         <form
@@ -570,8 +597,44 @@ export default function ClosetPage() {
           className="hidden"
         />
 
+        {/* Filters */}
+        <div className="mt-8 flex flex-wrap items-center gap-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name"
+            aria-label="Search by name"
+            className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:ring-1 focus:ring-denim"
+          />
+          {!pickSlot &&
+            (["all", ...CATEGORIES] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={categoryFilter === c}
+                onClick={() => setCategoryFilter(c)}
+                className={categoryFilter === c ? filterOn : filterOff}
+              >
+                {c}
+              </button>
+            ))}
+          <button
+            type="button"
+            aria-pressed={onlyNeedsTags}
+            onClick={() => setOnlyNeedsTags((v) => !v)}
+            className={onlyNeedsTags ? filterOn : filterOff}
+          >
+            Needs tags ({needsTagsCount})
+          </button>
+        </div>
+        {filtering && (
+          <p className="mt-2 text-xs text-paper/60">
+            Showing {visibleItems.length} of {slotItems.length}
+          </p>
+        )}
+
         {/* Items grid */}
-        <div className="grid gap-4 mt-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-4 mt-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {visibleItems.map((it) => (
             <div key={it.id} className="bg-paper text-ink border border-ink/20 rounded-[2px] p-4">
               {/* Thumbnail if present */}
@@ -699,7 +762,11 @@ export default function ClosetPage() {
 
           {visibleItems.length === 0 && !status && (
             <p className="text-paper/70 mt-4">
-              {pickSlot ? `No ${pickSlot} items in your closet yet.` : "No items yet."}
+              {filtering
+                ? "Nothing matches those filters."
+                : pickSlot
+                  ? `No ${pickSlot} items in your closet yet.`
+                  : "No items yet."}
             </p>
           )}
         </div>
