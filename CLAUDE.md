@@ -73,8 +73,9 @@ Bottom
 
 - AI tag suggestions (2026-10-18): picking a photo on Add Item (camera or library) shrinks it in the browser (`src/lib/image.ts`) and posts it to `/api/suggest-tags` (`src/app/api/suggest-tags/route.ts`), which checks the caller's Supabase login, then calls Claude (`claude-haiku-5-5`, the small cheap model, effort low; move up to `claude-sonnet-5-5` if suggestions are poor, structured output via `client.messages.parse` + zod) using the server-only `ANTHROPIC_API_KEY`. The schema, prompt and cleanup rules are in `src/lib/tagging.ts`. The form is pre-filled but fully editable. Refusal fallbacks (`fallbacks`) were not enabled; a refusal just shows a message. Cost with Haiku is a fraction of a cent per photo. The user plans to reuse their existing Anthropic Console account (a separate key named `style-me`).
 
+- Design system is now on every page (2026-10-18): Home, Sign in, Selfie, Try-On, Outfit, Closet and the NavBar. The shared look lives in `src/lib/ui.ts` (use it for new pages). Sign in shows "Signed in as ..." with Sign out when logged in, and the NavBar shows "Account" instead of "Sign in". Selfie offers Take selfie / Upload from library. Try-On picks items by the `category` column. The developer pages `/test` and `/me` were removed.
+
 **Not done yet**
-- Design system is not applied to the Home, Auth, Selfie, Try-On and Me pages (they are still on plain white). Outfit, Closet and the NavBar are done.
 - Photos for the 3 restored items (the user will add them all at once later).
 - AI tagging is ON as of 2026-10-18 (`ANTHROPIC_API_KEY` is set in Vercel Production and the account has credit). It was tested end to end with a drawn navy t-shirt picture (came back as "Navy Crew Tee", tee, top, casual). It has not yet been tried on real clothing photos; judge the quality when the user adds photos and move up to `claude-sonnet-5-5` in `route.ts` if suggestions are poor. If suggestions stop working, check the Anthropic Console credit balance first: an empty balance shows "AI suggestions are paused: the Anthropic account is out of credit".
 
