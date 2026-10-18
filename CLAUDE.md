@@ -71,10 +71,12 @@ Bottom
 
 - Closet polish is done and live (2026-10-18): design system applied to Closet and NavBar, Add Item offers both Take Photo (`capture="environment"`, opens the camera on phones; on desktop it opens the file picker) and Upload from Library, page title is "Style Me", base font is Inter. `globals.css` body is charcoal with ink text; the old OS dark-mode override was removed because it made text unreadable on the white pages.
 
+- AI tag suggestions (2026-10-18): picking a photo on Add Item (camera or library) shrinks it in the browser (`src/lib/image.ts`) and posts it to `/api/suggest-tags` (`src/app/api/suggest-tags/route.ts`), which checks the caller's Supabase login, then calls Claude (`claude-opus-5-5`, effort low, structured output via `client.messages.parse` + zod) using the server-only `ANTHROPIC_API_KEY`. The schema, prompt and cleanup rules are in `src/lib/tagging.ts`. The form is pre-filled but fully editable. Refusal fallbacks (`fallbacks`) were not enabled; a refusal just shows a message. Cost is roughly 1-2 cents per photo.
+
 **Not done yet**
 - Design system is not applied to the Home, Auth, Selfie, Try-On and Me pages (they are still on plain white). Outfit, Closet and the NavBar are done.
 - Photos for the 3 restored items (the user will add them all at once later).
-- AI tagging (Should-have priority).
+- AI tagging is built and deployed but NOT yet turned on: it needs the `ANTHROPIC_API_KEY` environment variable in Vercel (Production). Until then the Add Item form says "AI suggestions aren't set up yet" and stays manual. Once the key is set and redeployed, test it end to end with a real clothing photo (it has only been tested without a key, plus unit tests of the cleanup rules).
 
 **Login (working as of 2026-10-18)**
 - Supabase project is `style-me-2` (org "Mochi N Boba Inc.", free tier). Free-tier projects pause after inactivity. It was found paused on 2026-10-18 and showed 'Restoration in progress'; it is now Healthy. Check the dashboard shows Healthy before testing login.
