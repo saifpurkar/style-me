@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import NavBar from "@/components/NavBar";
 import { v4 as uuidv4 } from "uuid";
+import { outlineBtn, pageCls, panelCls, primaryBtn } from "@/lib/ui";
 
 export default function SelfiePage() {
   const [status, setStatus] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const cameraRef = useRef<HTMLInputElement | null>(null);
+  const libraryRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -38,7 +41,7 @@ export default function SelfiePage() {
     }
 
     if (!profile?.selfie_path) {
-      setStatus("No selfie set yet. Upload one below.");
+      setStatus("No selfie set yet. Add one below.");
       setSelfieUrl(null);
       return;
     }
@@ -55,6 +58,12 @@ export default function SelfiePage() {
 
     setSelfieUrl(signed?.signedUrl ?? null);
     setStatus("");
+  }
+
+  function clearChosen() {
+    setFile(null);
+    if (cameraRef.current) cameraRef.current.value = "";
+    if (libraryRef.current) libraryRef.current.value = "";
   }
 
   async function uploadSelfie(e: React.FormEvent) {
@@ -101,53 +110,76 @@ export default function SelfiePage() {
 
     // Refresh preview from profile
     await loadSelfieFromProfile(userId);
-
-    // Clear the input
-    const inputEl = document.getElementById("selfie-input") as HTMLInputElement | null;
-    if (inputEl) inputEl.value = "";
-    setFile(null);
+    clearChosen();
 
     setStatus("Selfie uploaded!");
     setTimeout(() => setStatus(""), 1500);
   }
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className={pageCls}>
       <NavBar />
       <section className="mx-auto max-w-3xl px-4 py-10">
-        <h1 className="text-3xl font-bold">Selfie</h1>
-        <p className="mt-2 text-slate-600">
-          Upload a selfie (plain background works best). It stays private in your account.
+        <h1 className="font-display font-semibold text-3xl text-paper">Selfie</h1>
+        <p className="mt-2 text-paper/70">
+          Add a selfie (a plain background works best). It stays private in your account.
         </p>
 
-        {status && <p className="mt-4 text-sm">{status}</p>}
+        {status && <p className="mt-4 text-sm text-paper/80">{status}</p>}
 
-        <form onSubmit={uploadSelfie} className="mt-6 grid gap-3 sm:grid-cols-3">
+        <form onSubmit={uploadSelfie} className={`${panelCls} mt-6 grid gap-3`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className={outlineBtn} onClick={() => cameraRef.current?.click()}>
+              Take selfie
+            </button>
+            <button type="button" className={outlineBtn} onClick={() => libraryRef.current?.click()}>
+              Upload from library
+            </button>
+            {file && (
+              <>
+                <span className="text-xs text-ink/70 truncate max-w-[14rem]">{file.name}</span>
+                <button
+                  type="button"
+                  className="font-utility text-[10px] uppercase tracking-wider text-ink/60 underline hover:text-ink"
+                  onClick={clearChosen}
+                >
+                  Remove
+                </button>
+              </>
+            )}
+          </div>
           <input
-            id="selfie-input"
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="user"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="hidden"
+          />
+          <input
+            ref={libraryRef}
             type="file"
             accept="image/*"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="border rounded px-3 py-2"
+            className="hidden"
           />
-          <button
-            type="submit"
-            className="border rounded px-3 py-2 hover:bg-slate-50"
-          >
-            Upload Selfie
-          </button>
+          <div>
+            <button type="submit" className={primaryBtn} disabled={!file}>
+              Save selfie
+            </button>
+          </div>
         </form>
 
         <div className="mt-8">
-          <h2 className="text-xl font-semibold">Current Selfie</h2>
+          <h2 className="font-display font-semibold text-xl">Current selfie</h2>
           {selfieUrl ? (
             <img
               src={selfieUrl}
               alt="Your latest selfie"
-              className="mt-3 w-full max-w-sm rounded-lg border"
+              className="mt-3 w-full max-w-sm rounded-[2px] border border-paper/20"
             />
           ) : (
-            <p className="mt-3 text-slate-600">No selfie yet. Upload one above.</p>
+            <p className="mt-3 text-paper/70">No selfie yet. Add one above.</p>
           )}
         </div>
       </section>

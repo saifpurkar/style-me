@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { isSlot, slotOf, type Slot } from "@/lib/outfit";
 import { shrinkToJpegBase64 } from "@/lib/image";
 import type { TagSuggestion } from "@/lib/tagging";
+import { chipCls, fieldCls, labelCls, outlineBtn, primaryBtn } from "@/lib/ui";
 
 type Item = {
   id: string;
@@ -37,17 +38,6 @@ function toggleValue(arr: string[], val: string): string[] {
 function pretty(value: string): string {
   return value.replace(/_/g, " ");
 }
-
-// Shared look (design system: ink/paper/charcoal/denim/brass, 2px corners, thin rules)
-const fieldCls =
-  "border border-ink/30 bg-paper text-ink px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:ring-1 focus:ring-denim";
-const labelCls = "font-utility text-[10px] uppercase tracking-wider text-ink/60";
-const primaryBtn =
-  "font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2 rounded-[2px] hover:opacity-90";
-const outlineBtn =
-  "font-utility text-[10px] uppercase tracking-wider border border-denim text-denim px-3 py-1.5 rounded-[2px] hover:bg-denim hover:text-paper";
-const chipCls =
-  "font-utility text-[10px] uppercase tracking-wider border border-ink/25 text-ink/80 px-1.5 py-0.5 rounded-[2px]";
 
 function CheckGroup({
   legend,
