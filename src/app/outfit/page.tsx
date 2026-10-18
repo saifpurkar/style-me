@@ -1,37 +1,42 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import NavBar from "@/components/NavBar";
+import {
+  ACCESSORY_SLOTS,
+  ALL_SLOTS,
+  FORMALITY,
+  OCCASIONS,
+  REQUIRED_SLOTS,
+  canAutoSwap,
+  candidatesFor,
+  chosenItem,
+  isAccessorySlot,
+  isSlot,
+  nextCandidate,
+  randomizeSelection,
+  type AccessorySlot,
+  type Formality,
+  type Occasion,
+  type OutfitItem,
+  type Selection,
+  type Slot,
+} from "@/lib/outfit";
 
-type Item = {
-  id: string;
+type Item = OutfitItem & {
   name: string;
-  category: string | null;
-  subcategory: string | null;
-  occasions: string[] | null;
-  formality: string[] | null;
   image_path: string | null;
   created_at: string;
 };
 
 type ItemWithUrl = Item & { image_url?: string | null };
 
-const OCCASIONS = ["work", "wfh", "dining", "date", "casual_hangout", "special_event", "travel", "outdoor", "gym"] as const;
-type Occasion = (typeof OCCASIONS)[number];
-
-const FORMALITY = ["casual", "smart_casual", "business_casual", "formal"] as const;
-type Formality = (typeof FORMALITY)[number];
-
-const REQUIRED_SLOTS = ["top", "bottom", "footwear"] as const;
-type RequiredSlot = (typeof REQUIRED_SLOTS)[number];
-
-// Accessory slot is derived from an item's subcategory (subcategory values map
-// 1:1 to slot names, except 'socks'/'other' which have no flat-lay slot).
-const ACCESSORY_SLOTS = ["headgear", "eyewear", "watch", "bracelet", "belt", "bag"] as const;
-type AccessorySlot = (typeof ACCESSORY_SLOTS)[number];
-
-type Slot = RequiredSlot | AccessorySlot;
+// The outfit is kept in sessionStorage so it survives a trip to the Closet
+// (Choose from Closet) and back. The Closet leaves its pick under PICK_KEY.
+const STATE_KEY = "styleme.outfit.v1";
+const PICK_KEY = "styleme.pick.v1";
 
 function label(value: string): string {
   if (value === "wfh") return "WFH";
@@ -42,12 +47,65 @@ function label(value: string): string {
 }
 
 export default function OutfitPage() {
+  const router = useRouter();
   const [status, setStatus] = useState<string>("");
   const [items, setItems] = useState<ItemWithUrl[]>([]);
   const [occasion, setOccasion] = useState<Occasion>("casual_hangout");
   const [formality, setFormality] = useState<Formality>("casual");
+  const [selection, setSelection] = useState<Selection>({});
+  const [dismissed, setDismissed] = useState<AccessorySlot[]>([]);
+  const [menuSlot, setMenuSlot] = useState<Slot | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   const showFormality = occasion !== "gym";
+
+  // Restore the saved outfit, then apply an item picked on the Closet screen.
+  useEffect(() => {
+    try {
+      let nextSelection: Selection = {};
+      let nextDismissed: AccessorySlot[] = [];
+
+      const raw = sessionStorage.getItem(STATE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if ((OCCASIONS as readonly string[]).includes(saved.occasion)) setOccasion(saved.occasion);
+        if ((FORMALITY as readonly string[]).includes(saved.formality)) setFormality(saved.formality);
+        if (saved.selection && typeof saved.selection === "object") {
+          for (const [slot, id] of Object.entries(saved.selection)) {
+            if (isSlot(slot) && typeof id === "string") nextSelection[slot] = id;
+          }
+        }
+        if (Array.isArray(saved.dismissed)) {
+          nextDismissed = saved.dismissed.filter((s: string): s is AccessorySlot => isAccessorySlot(s));
+        }
+      }
+
+      const pickRaw = sessionStorage.getItem(PICK_KEY);
+      if (pickRaw) {
+        sessionStorage.removeItem(PICK_KEY);
+        const pick = JSON.parse(pickRaw);
+        if (isSlot(pick.slot) && typeof pick.itemId === "string") {
+          nextSelection = { ...nextSelection, [pick.slot]: pick.itemId };
+          nextDismissed = nextDismissed.filter((s) => s !== pick.slot);
+        }
+      }
+
+      setSelection(nextSelection);
+      setDismissed(nextDismissed);
+    } catch {
+      // Saved state is only a convenience; start fresh if it can't be read.
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      sessionStorage.setItem(STATE_KEY, JSON.stringify({ occasion, formality, selection, dismissed }));
+    } catch {
+      // ignore
+    }
+  }, [hydrated, occasion, formality, selection, dismissed]);
 
   useEffect(() => {
     (async () => {
@@ -83,41 +141,77 @@ export default function OutfitPage() {
     })();
   }, []);
 
-  const matches = useMemo(() => {
-    return items.filter((it) => {
-      if (!it.occasions?.includes(occasion)) return false;
-      if (showFormality && !it.formality?.includes(formality)) return false;
-      return true;
-    });
-  }, [items, occasion, formality, showFormality]);
-
-  const outfit = useMemo(() => {
-    const slots: Record<Slot, ItemWithUrl | undefined> = {
-      top: undefined,
-      bottom: undefined,
-      footwear: undefined,
-      headgear: undefined,
-      eyewear: undefined,
-      watch: undefined,
-      bracelet: undefined,
-      belt: undefined,
-      bag: undefined,
+  // Close the swap menu when clicking anywhere outside a card.
+  useEffect(() => {
+    if (menuSlot === null) return;
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest("[data-swap-root]")) setMenuSlot(null);
     };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menuSlot]);
 
-    for (const slot of REQUIRED_SLOTS) {
-      slots[slot] = matches.find((it) => it.category === slot);
+  const slotInfo = useMemo(() => {
+    const info = {} as Record<Slot, { candidates: ItemWithUrl[]; current: ItemWithUrl | undefined }>;
+    for (const slot of ALL_SLOTS) {
+      const candidates = candidatesFor(items, slot, occasion, formality);
+      info[slot] = { candidates, current: chosenItem(items, slot, selection, candidates) };
     }
-    for (const slot of ACCESSORY_SLOTS) {
-      slots[slot] = matches.find((it) => it.category === "accessory" && it.subcategory === slot);
-    }
+    return info;
+  }, [items, occasion, formality, selection]);
 
-    const missingRequired = REQUIRED_SLOTS.filter((slot) => !slots[slot]);
+  const missingRequired = REQUIRED_SLOTS.filter((slot) => !slotInfo[slot].current);
+  const dismissedSlots = ACCESSORY_SLOTS.filter((slot) => dismissed.includes(slot) && slotInfo[slot].current);
 
-    return { slots, missingRequired };
-  }, [matches]);
+  const autoSwap = (slot: Slot) => {
+    const { candidates, current } = slotInfo[slot];
+    const next = nextCandidate(candidates, current?.id);
+    if (next) setSelection((s) => ({ ...s, [slot]: next.id }));
+    setMenuSlot(null);
+  };
+
+  const chooseFromCloset = (slot: Slot) => {
+    setMenuSlot(null);
+    router.push(`/closet?pick=${slot}`);
+  };
+
+  const dismissSlot = (slot: AccessorySlot) => {
+    setMenuSlot(null);
+    setDismissed((d) => (d.includes(slot) ? d : [...d, slot]));
+  };
+
+  const restoreSlot = (slot: AccessorySlot) => {
+    setDismissed((d) => d.filter((s) => s !== slot));
+  };
+
+  const swapEntireOutfit = () => {
+    setSelection(randomizeSelection(items, occasion, formality, selection));
+    setDismissed([]);
+    setMenuSlot(null);
+  };
 
   const occasionLabel = label(occasion);
   const formalityLabel = label(formality);
+
+  const card = (slot: Slot) => {
+    const { candidates, current } = slotInfo[slot];
+    if (!current) return null;
+    if (isAccessorySlot(slot) && dismissed.includes(slot)) return null;
+    return (
+      <OutfitCard
+        key={slot}
+        slot={slot}
+        item={current}
+        required={!isAccessorySlot(slot)}
+        menuOpen={menuSlot === slot}
+        canAuto={canAutoSwap(candidates, current.id)}
+        onToggleMenu={() => setMenuSlot((m) => (m === slot ? null : slot))}
+        onAutoSwap={() => autoSwap(slot)}
+        onChoose={() => chooseFromCloset(slot)}
+        onDismiss={isAccessorySlot(slot) ? () => dismissSlot(slot) : undefined}
+      />
+    );
+  };
 
   return (
     <main className="min-h-screen bg-charcoal text-paper font-body">
@@ -160,7 +254,9 @@ export default function OutfitPage() {
 
           <button
             type="button"
-            className="ml-auto font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2 rounded-[2px] hover:opacity-90"
+            onClick={swapEntireOutfit}
+            disabled={!!status || missingRequired.length > 0}
+            className="ml-auto font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2 rounded-[2px] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Swap Entire Outfit
           </button>
@@ -168,12 +264,12 @@ export default function OutfitPage() {
 
         {status && <p className="mt-4 text-sm text-paper/80">{status}</p>}
 
-        {!status && outfit.missingRequired.length > 0 && (
+        {!status && missingRequired.length > 0 && (
           <div className="mt-6 bg-paper text-ink border border-dashed border-brass rounded-[2px] p-4">
             <div className="font-utility text-xs uppercase tracking-wider text-brass mb-2">
               Missing required items
             </div>
-            {outfit.missingRequired.map((slot) => (
+            {missingRequired.map((slot) => (
               <p key={slot} className="text-sm">
                 No {slot} tagged for {showFormality ? `${formalityLabel} ` : ""}{occasionLabel} yet.
               </p>
@@ -181,25 +277,41 @@ export default function OutfitPage() {
           </div>
         )}
 
-        {!status && outfit.missingRequired.length === 0 && (
+        {!status && missingRequired.length === 0 && (
           <div className="mt-8 bg-paper border border-dashed border-ink/40 rounded-[2px] p-6 flex flex-col items-center gap-4">
-            {outfit.slots.headgear && <OutfitCard slot="headgear" required={false} item={outfit.slots.headgear} />}
-            {outfit.slots.eyewear && <OutfitCard slot="eyewear" required={false} item={outfit.slots.eyewear} />}
+            {card("headgear")}
+            {card("eyewear")}
 
             <div className="flex items-start justify-center gap-4">
-              {outfit.slots.watch && <OutfitCard slot="watch" required={false} item={outfit.slots.watch} />}
-              <OutfitCard slot="top" required item={outfit.slots.top!} />
-              {outfit.slots.bracelet && <OutfitCard slot="bracelet" required={false} item={outfit.slots.bracelet} />}
+              {card("watch")}
+              {card("top")}
+              {card("bracelet")}
             </div>
 
-            {outfit.slots.belt && <OutfitCard slot="belt" required={false} item={outfit.slots.belt} />}
+            {card("belt")}
 
-            <OutfitCard slot="bottom" required item={outfit.slots.bottom!} />
+            {card("bottom")}
 
             <div className="flex items-start justify-center gap-4">
-              <OutfitCard slot="footwear" required item={outfit.slots.footwear!} />
-              {outfit.slots.bag && <OutfitCard slot="bag" required={false} item={outfit.slots.bag} />}
+              {card("footwear")}
+              {card("bag")}
             </div>
+
+            {dismissedSlots.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 border-t border-dashed border-ink/30 pt-4 w-full">
+                <span className="font-utility text-[10px] uppercase tracking-wider text-ink/60">Removed</span>
+                {dismissedSlots.map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => restoreSlot(slot)}
+                    className="font-utility text-[10px] uppercase tracking-wider text-brass border border-dashed border-brass rounded-[2px] px-2 py-1 hover:bg-brass hover:text-ink"
+                  >
+                    + {slot}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -207,11 +319,46 @@ export default function OutfitPage() {
   );
 }
 
-function OutfitCard({ item, slot, required }: { item: ItemWithUrl; slot: string; required: boolean }) {
+function OutfitCard({
+  item,
+  slot,
+  required,
+  menuOpen,
+  canAuto,
+  onToggleMenu,
+  onAutoSwap,
+  onChoose,
+  onDismiss,
+}: {
+  item: ItemWithUrl;
+  slot: string;
+  required: boolean;
+  menuOpen: boolean;
+  canAuto: boolean;
+  onToggleMenu: () => void;
+  onAutoSwap: () => void;
+  onChoose: () => void;
+  onDismiss?: () => void;
+}) {
+  const accent = required ? "text-denim" : "text-brass";
+  const buttonTone = required
+    ? "border-denim text-denim hover:bg-denim hover:text-paper"
+    : "border-brass text-brass hover:bg-brass hover:text-ink";
+
   return (
-    <div className="w-36 border border-ink/20 rounded-[2px] p-2 bg-paper">
-      <div className={`font-utility text-[10px] uppercase tracking-wider mb-1 ${required ? "text-denim" : "text-brass"}`}>
-        {slot}
+    <div data-swap-root className="relative w-36 border border-ink/20 rounded-[2px] p-2 bg-paper">
+      <div className="flex items-center justify-between mb-1">
+        <span className={`font-utility text-[10px] uppercase tracking-wider ${accent}`}>{slot}</span>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label={`Remove ${slot}`}
+            className="font-utility text-sm leading-none text-brass hover:text-ink px-1"
+          >
+            ×
+          </button>
+        )}
       </div>
       {item.image_url ? (
         <img src={item.image_url} alt={item.name} className="w-full h-28 object-cover rounded-[2px] mb-1" />
@@ -221,6 +368,40 @@ function OutfitCard({ item, slot, required }: { item: ItemWithUrl; slot: string;
         </div>
       )}
       <div className="text-sm font-body text-ink truncate">{item.name}</div>
+
+      <button
+        type="button"
+        onClick={onToggleMenu}
+        aria-expanded={menuOpen}
+        className={`mt-2 w-full font-utility text-[10px] uppercase tracking-wider border rounded-[2px] py-1 ${buttonTone}`}
+      >
+        Swap
+      </button>
+
+      {menuOpen && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-paper border border-ink/30 rounded-[2px] p-1 flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={onAutoSwap}
+            disabled={!canAuto}
+            className={`font-utility text-[10px] uppercase tracking-wider border rounded-[2px] py-1 disabled:opacity-40 disabled:cursor-not-allowed ${buttonTone}`}
+          >
+            Auto-swap
+          </button>
+          {!canAuto && (
+            <span className="font-utility text-[9px] uppercase tracking-wider text-ink/50 text-center">
+              No other match
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onChoose}
+            className={`font-utility text-[10px] uppercase tracking-wider border rounded-[2px] py-1 ${buttonTone}`}
+          >
+            Choose from closet
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import NavBar from "@/components/NavBar";
 import { v4 as uuidv4 } from "uuid";
+import { useRouter } from "next/navigation";
+import { isSlot, slotOf, type Slot } from "@/lib/outfit";
 
 type Item = {
   id: string;
@@ -31,7 +33,16 @@ function toggleValue(arr: string[], val: string): string[] {
 }
 
 export default function ClosetPage() {
+  const router = useRouter();
   const [items, setItems] = useState<ItemWithUrl[]>([]);
+
+  // "Pick mode": the Outfit screen sends us here as /closet?pick=<slot> to
+  // choose one item for that slot, then we go back to /outfit.
+  const [pickSlot, setPickSlot] = useState<Slot | null>(null);
+  useEffect(() => {
+    const slot = new URLSearchParams(window.location.search).get("pick");
+    if (slot && isSlot(slot)) setPickSlot(slot);
+  }, []);
   const [status, setStatus] = useState<string>("");
   const [name, setName] = useState("");
   const [type, setType] = useState("shirt");
@@ -207,6 +218,19 @@ export default function ClosetPage() {
     }
   };
 
+  // In pick mode only show items that belong in the slot being filled.
+  const visibleItems = pickSlot ? items.filter((it) => slotOf(it) === pickSlot) : items;
+
+  const pickItem = (it: ItemWithUrl) => {
+    if (!pickSlot) return;
+    try {
+      sessionStorage.setItem("styleme.pick.v1", JSON.stringify({ slot: pickSlot, itemId: it.id }));
+    } catch {
+      // If storage is unavailable the outfit simply keeps its current item.
+    }
+    router.push("/outfit");
+  };
+
   // Begin editing tags for an EXISTING item
   const startEdit = (it: ItemWithUrl) => {
     setEditingId(it.id);
@@ -251,13 +275,20 @@ export default function ClosetPage() {
     <main className="min-h-screen bg-white">
       <NavBar />
       <section className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="text-3xl font-bold">Closet</h1>
+        <h1 className="text-3xl font-bold">{pickSlot ? `Choose ${pickSlot}` : "Closet"}</h1>
+
+        {pickSlot && (
+          <p className="mt-2 text-sm text-slate-600">
+            Pick an item for your outfit&apos;s {pickSlot} slot, or{" "}
+            <a href="/outfit" className="underline">go back to the outfit</a>.
+          </p>
+        )}
 
         {/* Status / messages */}
         {status && <p className="mt-3 text-sm">{status}</p>}
 
-        {/* Add Item form */}
-        <form onSubmit={insertItem} className="mt-6 grid gap-3 sm:grid-cols-4">
+        {/* Add Item form (hidden while picking an item for an outfit) */}
+        <form onSubmit={insertItem} className={`mt-6 grid gap-3 sm:grid-cols-4 ${pickSlot ? "hidden" : ""}`}>
           <input
             type="text"
             placeholder="Item name (e.g., Navy Polo)"
@@ -362,7 +393,7 @@ export default function ClosetPage() {
 
         {/* Items grid */}
         <div className="grid gap-4 mt-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {items.map((it) => (
+          {visibleItems.map((it) => (
             <div key={it.id} className="border rounded-lg p-4">
               {/* Thumbnail if present */}
               {it.image_url ? (
@@ -476,28 +507,42 @@ export default function ClosetPage() {
                   )}
 
                   <div className="mt-3 flex gap-2">
-                    <button
-                      className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
-                      onClick={() => onClickChangeImage(it.id)}
-                      type="button"
-                    >
-                      {it.image_url ? "Change image" : "Add image"}
-                    </button>
-                    <button
-                      className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
-                      onClick={() => startEdit(it)}
-                      type="button"
-                    >
-                      Edit tags
-                    </button>
+                    {pickSlot ? (
+                      <button
+                        className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
+                        onClick={() => pickItem(it)}
+                        type="button"
+                      >
+                        Use this item
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
+                          onClick={() => onClickChangeImage(it.id)}
+                          type="button"
+                        >
+                          {it.image_url ? "Change image" : "Add image"}
+                        </button>
+                        <button
+                          className="text-sm border rounded px-2 py-1 hover:bg-slate-50"
+                          onClick={() => startEdit(it)}
+                          type="button"
+                        >
+                          Edit tags
+                        </button>
+                      </>
+                    )}
                   </div>
                 </>
               )}
             </div>
           ))}
 
-          {items.length === 0 && !status && (
-            <p className="text-slate-600 mt-4">No items yet.</p>
+          {visibleItems.length === 0 && !status && (
+            <p className="text-slate-600 mt-4">
+              {pickSlot ? `No ${pickSlot} items in your closet yet.` : "No items yet."}
+            </p>
           )}
         </div>
       </section>
