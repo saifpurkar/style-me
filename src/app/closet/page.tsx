@@ -6,6 +6,8 @@ import NavBar from "@/components/NavBar";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import { isSlot, slotOf, type Slot } from "@/lib/outfit";
+import { shrinkToJpegBase64 } from "@/lib/image";
+import type { TagSuggestion } from "@/lib/tagging";
 
 type Item = {
   id: string;
@@ -105,6 +107,11 @@ export default function ClosetPage() {
   const libraryInputRef = useRef<HTMLInputElement | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // AI suggestions for the photo (fills the form; everything stays editable)
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestNote, setSuggestNote] = useState("");
+  const suggestRun = useRef(0);
+
   // for per-item image upload
   const hiddenFileRef = useRef<HTMLInputElement | null>(null);
   const [targetItemId, setTargetItemId] = useState<string | null>(null);
@@ -115,6 +122,55 @@ export default function ClosetPage() {
   const [editSubcategory, setEditSubcategory] = useState<string>("");
   const [editOccasions, setEditOccasions] = useState<string[]>([]);
   const [editFormality, setEditFormality] = useState<string[]>([]);
+
+  // Ask the server for tag suggestions for a photo and pre-fill the form with them.
+  async function suggestFromPhoto(photo: File) {
+    const run = ++suggestRun.current;
+    setSuggesting(true);
+    setSuggestNote("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setSuggestNote("Sign in to get AI suggestions.");
+        return;
+      }
+      const image = await shrinkToJpegBase64(photo);
+      const res = await fetch("/api/suggest-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ image, mediaType: "image/jpeg" }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (run !== suggestRun.current) return; // a newer photo was chosen meanwhile
+      if (!res.ok) {
+        setSuggestNote(`${json.error ?? "AI suggestions failed."} You can fill the fields in yourself.`);
+        return;
+      }
+      const s: TagSuggestion = json.suggestion;
+      setName((current) => (current.trim() ? current : s.name));
+      setType(s.type);
+      setCategory(s.category);
+      setSubcategory(s.subcategory ?? "");
+      setOccasions(s.occasions);
+      setFormality(s.formality);
+      setSuggestNote("AI filled these in from your photo. Check them before adding.");
+    } catch {
+      if (run === suggestRun.current) {
+        setSuggestNote("Couldn't read that photo for suggestions. You can fill the fields in yourself.");
+      }
+    } finally {
+      if (run === suggestRun.current) setSuggesting(false);
+    }
+  }
+
+  // A photo was chosen (camera or library): keep it, then ask for suggestions.
+  function choosePhoto(photo: File | null) {
+    setFile(photo);
+    suggestRun.current++; // forget any suggestion still on its way
+    setSuggesting(false);
+    setSuggestNote("");
+    if (photo) void suggestFromPhoto(photo);
+  }
 
   // Show a small preview of the chosen photo, and free it when it changes.
   useEffect(() => {
@@ -229,7 +285,7 @@ export default function ClosetPage() {
     } else {
       setName("");
       setType("shirt");
-      setFile(null);
+      choosePhoto(null);
       setCategory("top");
       setSubcategory("");
       setOccasions([]);
@@ -381,6 +437,7 @@ export default function ClosetPage() {
               <option value="shoes">shoes</option>
               <option value="jacket">jacket</option>
               <option value="hoodie">hoodie</option>
+              <option value="accessory">accessory</option>
             </select>
           </label>
 
@@ -401,7 +458,7 @@ export default function ClosetPage() {
                     type="button"
                     className="font-utility text-[10px] uppercase tracking-wider text-ink/60 underline hover:text-ink"
                     onClick={() => {
-                      setFile(null);
+                      choosePhoto(null);
                       if (cameraInputRef.current) cameraInputRef.current.value = "";
                       if (libraryInputRef.current) libraryInputRef.current.value = "";
                     }}
@@ -414,19 +471,35 @@ export default function ClosetPage() {
             {previewUrl && (
               <img src={previewUrl} alt="Selected photo" className="h-24 w-24 object-cover rounded-[2px] border border-ink/20" />
             )}
+            {(suggesting || suggestNote) && (
+              <div className="flex flex-wrap items-center gap-3" aria-live="polite">
+                <span className="text-xs text-ink/70">
+                  {suggesting ? "Looking at your photo…" : suggestNote}
+                </span>
+                {!suggesting && file && (
+                  <button
+                    type="button"
+                    className="font-utility text-[10px] uppercase tracking-wider text-denim underline hover:text-ink"
+                    onClick={() => void suggestFromPhoto(file)}
+                  >
+                    Suggest again
+                  </button>
+                )}
+              </div>
+            )}
             <input
               ref={cameraInputRef}
               type="file"
               accept="image/*"
               capture="environment"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => choosePhoto(e.target.files?.[0] ?? null)}
               className="hidden"
             />
             <input
               ref={libraryInputRef}
               type="file"
               accept="image/*"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => choosePhoto(e.target.files?.[0] ?? null)}
               className="hidden"
             />
           </div>
