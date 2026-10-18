@@ -9,6 +9,7 @@ import { isSlot, slotOf, type Slot } from "@/lib/outfit";
 import { shrinkToJpegBase64 } from "@/lib/image";
 import type { TagSuggestion } from "@/lib/tagging";
 import { chipCls, fieldCls, labelCls, outlineBtn, primaryBtn } from "@/lib/ui";
+import { WARMTH_LEVELS } from "@/lib/weather";
 
 type Item = {
   id: string;
@@ -22,6 +23,7 @@ type Item = {
   subcategory: string | null;
   occasions: string[] | null;
   formality: string[] | null;
+  warmth: string | null;
 };
 
 type ItemWithUrl = Item & { image_url?: string | null };
@@ -91,6 +93,7 @@ export default function ClosetPage() {
   const [subcategory, setSubcategory] = useState<string>("");
   const [occasions, setOccasions] = useState<string[]>([]);
   const [formality, setFormality] = useState<string[]>([]);
+  const [warmth, setWarmth] = useState<string>("");
 
   // Add Item photo: one input opens the camera (phones), the other the photo library.
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -112,6 +115,7 @@ export default function ClosetPage() {
   const [editSubcategory, setEditSubcategory] = useState<string>("");
   const [editOccasions, setEditOccasions] = useState<string[]>([]);
   const [editFormality, setEditFormality] = useState<string[]>([]);
+  const [editWarmth, setEditWarmth] = useState<string>("");
 
   // Ask the server for tag suggestions for a photo and pre-fill the form with them.
   async function suggestFromPhoto(photo: File) {
@@ -143,6 +147,7 @@ export default function ClosetPage() {
       setSubcategory(s.subcategory ?? "");
       setOccasions(s.occasions);
       setFormality(s.formality);
+      setWarmth(s.warmth ?? "");
       setSuggestNote("AI filled these in from your photo. Check them before adding.");
     } catch {
       if (run === suggestRun.current) {
@@ -186,7 +191,7 @@ export default function ClosetPage() {
     setStatus("Loading...");
     const { data, error } = await supabase
       .from("items")
-      .select("id,name,type,color_primary,brand,created_at,image_path,category,subcategory,occasions,formality")
+      .select("id,name,type,color_primary,brand,created_at,image_path,category,subcategory,occasions,formality,warmth")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -268,6 +273,7 @@ export default function ClosetPage() {
       subcategory: category === "accessory" ? (subcategory || null) : null,
       occasions: occasions.length ? occasions : null,
       formality: formality.length ? formality : null,
+      warmth: warmth || null,
     });
 
     if (error) {
@@ -280,6 +286,7 @@ export default function ClosetPage() {
       setSubcategory("");
       setOccasions([]);
       setFormality([]);
+      setWarmth("");
       if (cameraInputRef.current) cameraInputRef.current.value = "";
       if (libraryInputRef.current) libraryInputRef.current.value = "";
       setStatus("Added!");
@@ -348,6 +355,7 @@ export default function ClosetPage() {
     setEditSubcategory(it.subcategory || "");
     setEditOccasions(it.occasions || []);
     setEditFormality(it.formality || []);
+    setEditWarmth(it.warmth || "");
   };
 
   const cancelEdit = () => {
@@ -368,6 +376,7 @@ export default function ClosetPage() {
         subcategory: editCategory === "accessory" ? (editSubcategory || null) : null,
         occasions: editOccasions.length ? editOccasions : null,
         formality: editFormality.length ? editFormality : null,
+        warmth: editWarmth || null,
       })
       .eq("id", itemId)
       .eq("user_id", user.id); // RLS safety
@@ -522,6 +531,16 @@ export default function ClosetPage() {
             </label>
           )}
 
+          <label className="grid gap-1">
+            <span className={labelCls}>Warmth</span>
+            <select value={warmth} onChange={(e) => setWarmth(e.target.value)} className={fieldCls}>
+              <option value="">— not set —</option>
+              {WARMTH_LEVELS.map((w) => (
+                <option key={w} value={w}>{w}</option>
+              ))}
+            </select>
+          </label>
+
           <CheckGroup
             legend="Occasions"
             options={OCCASIONS}
@@ -605,6 +624,13 @@ export default function ClosetPage() {
                     </select>
                   )}
 
+                  <select value={editWarmth} onChange={(e) => setEditWarmth(e.target.value)} className={fieldCls}>
+                    <option value="">— warmth not set —</option>
+                    {WARMTH_LEVELS.map((w) => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
+                  </select>
+
                   <CheckGroup
                     legend="Occasions"
                     options={OCCASIONS}
@@ -632,6 +658,7 @@ export default function ClosetPage() {
                   {it.category && (
                     <div className="mt-2 font-utility text-[10px] uppercase tracking-wider text-denim">
                       {it.category}{it.subcategory ? ` / ${it.subcategory}` : ""}
+                      {it.warmth ? ` · ${it.warmth}` : ""}
                     </div>
                   )}
                   {it.formality && it.formality.length > 0 && (

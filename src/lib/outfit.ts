@@ -1,4 +1,5 @@
 // Pure outfit logic (no React, no Supabase) so it can be tested on its own.
+import { fitsWeather, type Band } from "@/lib/weather";
 
 export const OCCASIONS = ["work", "wfh", "dining", "date", "casual_hangout", "special_event", "travel", "outdoor", "gym"] as const;
 export type Occasion = (typeof OCCASIONS)[number];
@@ -32,6 +33,7 @@ export type OutfitItem = {
   subcategory: string | null;
   occasions: string[] | null;
   formality: string[] | null;
+  warmth?: string | null;
 };
 
 // The item the user has explicitly picked for a slot (by id). Slots without an
@@ -55,9 +57,39 @@ export function matchesFilter(item: OutfitItem, occasion: Occasion, formality: F
   return true;
 }
 
+// Weather only shapes the main garments; accessories don't care.
+function weatherSlot(slot: Slot): slot is RequiredSlot {
+  return slot === "top" || slot === "bottom" || slot === "footwear";
+}
+
 // Every item that fits this slot and the chosen occasion/formality, in the order given.
-export function candidatesFor<T extends OutfitItem>(items: T[], slot: Slot, occasion: Occasion, formality: Formality): T[] {
-  return items.filter((it) => slotOf(it) === slot && matchesFilter(it, occasion, formality));
+// With a weather band, items too light or too heavy for it are left out, unless that
+// would leave the slot empty (then the occasion matches are all kept).
+export function candidatesFor<T extends OutfitItem>(
+  items: T[],
+  slot: Slot,
+  occasion: Occasion,
+  formality: Formality,
+  band: Band | null = null
+): T[] {
+  const matching = items.filter((it) => slotOf(it) === slot && matchesFilter(it, occasion, formality));
+  if (!band || !weatherSlot(slot)) return matching;
+  const fitting = matching.filter((it) => fitsWeather(it.warmth, band, slot));
+  return fitting.length > 0 ? fitting : matching;
+}
+
+// True when the weather filter would have emptied this slot, so we fell back to
+// the unfiltered matches. Lets the screen say so.
+export function weatherFellBack<T extends OutfitItem>(
+  items: T[],
+  slot: Slot,
+  occasion: Occasion,
+  formality: Formality,
+  band: Band | null
+): boolean {
+  if (!band || !weatherSlot(slot)) return false;
+  const matching = items.filter((it) => slotOf(it) === slot && matchesFilter(it, occasion, formality));
+  return matching.length > 0 && !matching.some((it) => fitsWeather(it.warmth, band, slot));
 }
 
 // The item shown in a slot: the user's pick if it still exists and belongs in
@@ -92,11 +124,12 @@ export function randomizeSelection<T extends OutfitItem>(
   occasion: Occasion,
   formality: Formality,
   current: Selection,
-  rng: () => number = Math.random
+  rng: () => number = Math.random,
+  band: Band | null = null
 ): Selection {
   const next: Selection = {};
   for (const slot of ALL_SLOTS) {
-    const candidates = candidatesFor(items, slot, occasion, formality);
+    const candidates = candidatesFor(items, slot, occasion, formality, band);
     if (candidates.length === 0) continue;
     const showing = chosenItem(items, slot, current, candidates);
     const options = candidates.length > 1 ? candidates.filter((c) => c.id !== showing?.id) : candidates;

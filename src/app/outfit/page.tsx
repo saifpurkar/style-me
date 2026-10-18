@@ -17,6 +17,7 @@ import {
   isSlot,
   nextCandidate,
   randomizeSelection,
+  weatherFellBack,
   type AccessorySlot,
   type Formality,
   type Occasion,
@@ -24,6 +25,18 @@ import {
   type Selection,
   type Slot,
 } from "@/lib/outfit";
+import {
+  BAND_ADVICE,
+  bandFor,
+  describeCode,
+  fetchWeather,
+  formatTemp,
+  searchPlaces,
+  type Place,
+  type PlaceResult,
+  type Unit,
+  type Weather,
+} from "@/lib/weather";
 
 type Item = OutfitItem & {
   name: string;
@@ -37,6 +50,34 @@ type ItemWithUrl = Item & { image_url?: string | null };
 // (Choose from Closet) and back. The Closet leaves its pick under PICK_KEY.
 const STATE_KEY = "styleme.outfit.v1";
 const PICK_KEY = "styleme.pick.v1";
+
+// Weather settings live in localStorage so they are remembered on this device.
+const PLACE_KEY = "styleme.place.v1";
+const UNIT_KEY = "styleme.unit.v1";
+const WEATHER_ON_KEY = "styleme.weatherOn.v1";
+
+function readStored<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : (JSON.parse(raw) as T);
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStored(key: string, value: unknown) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // remembering is only a convenience
+  }
+}
+
+function validPlace(p: unknown): p is Place {
+  const x = p as Place;
+  return !!x && typeof x.name === "string" && Number.isFinite(x.lat) && Number.isFinite(x.lon);
+}
 
 function label(value: string): string {
   if (value === "wfh") return "WFH";
@@ -57,7 +98,63 @@ export default function OutfitPage() {
   const [menuSlot, setMenuSlot] = useState<Slot | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
+  // Weather
+  const [place, setPlace] = useState<Place | null>(null);
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const [weatherNote, setWeatherNote] = useState("");
+  const [unit, setUnit] = useState<Unit>("C");
+  const [weatherOn, setWeatherOn] = useState(true);
+
   const showFormality = occasion !== "gym";
+
+  // Remembered weather settings (place, units, on/off).
+  useEffect(() => {
+    const savedPlace = readStored<unknown>(PLACE_KEY, null);
+    if (validPlace(savedPlace)) setPlace(savedPlace);
+    const savedUnit = readStored<unknown>(UNIT_KEY, "C");
+    setUnit(savedUnit === "F" ? "F" : "C");
+    setWeatherOn(readStored<unknown>(WEATHER_ON_KEY, true) !== false);
+  }, []);
+
+  // Load the weather whenever the place changes.
+  useEffect(() => {
+    if (!place) {
+      setWeather(null);
+      setWeatherNote("");
+      return;
+    }
+    let cancelled = false;
+    setWeatherNote("Loading the weather…");
+    fetchWeather(place)
+      .then((w) => {
+        if (cancelled) return;
+        setWeather(w);
+        setWeatherNote("");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWeather(null);
+        setWeatherNote("Couldn't load the weather right now. Outfits will ignore it for now.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [place]);
+
+  const band = weatherOn && weather ? bandFor(weather.feelsC) : null;
+
+  const choosePlace = (p: Place | null) => {
+    setPlace(p);
+    writeStored(PLACE_KEY, p);
+  };
+  const changeUnit = (u: Unit) => {
+    setUnit(u);
+    writeStored(UNIT_KEY, u);
+  };
+  const changeWeatherOn = (on: boolean) => {
+    setWeatherOn(on);
+    writeStored(WEATHER_ON_KEY, on);
+  };
 
   // Restore the saved outfit, then apply an item picked on the Closet screen.
   useEffect(() => {
@@ -118,7 +215,7 @@ export default function OutfitPage() {
 
       const { data: rawItems, error } = await supabase
         .from("items")
-        .select("id,name,category,subcategory,occasions,formality,image_path,created_at")
+        .select("id,name,category,subcategory,occasions,formality,warmth,image_path,created_at")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -154,13 +251,15 @@ export default function OutfitPage() {
   const slotInfo = useMemo(() => {
     const info = {} as Record<Slot, { candidates: ItemWithUrl[]; current: ItemWithUrl | undefined }>;
     for (const slot of ALL_SLOTS) {
-      const candidates = candidatesFor(items, slot, occasion, formality);
+      const candidates = candidatesFor(items, slot, occasion, formality, band);
       info[slot] = { candidates, current: chosenItem(items, slot, selection, candidates) };
     }
     return info;
-  }, [items, occasion, formality, selection]);
+  }, [items, occasion, formality, selection, band]);
 
   const missingRequired = REQUIRED_SLOTS.filter((slot) => !slotInfo[slot].current);
+  // Main garments where nothing suits the weather, so we are showing the other matches.
+  const fellBackSlots = REQUIRED_SLOTS.filter((slot) => weatherFellBack(items, slot, occasion, formality, band));
   const dismissedSlots = ACCESSORY_SLOTS.filter((slot) => dismissed.includes(slot) && slotInfo[slot].current);
 
   const autoSwap = (slot: Slot) => {
@@ -185,7 +284,7 @@ export default function OutfitPage() {
   };
 
   const swapEntireOutfit = () => {
-    setSelection(randomizeSelection(items, occasion, formality, selection));
+    setSelection(randomizeSelection(items, occasion, formality, selection, Math.random, band));
     setDismissed([]);
     setMenuSlot(null);
   };
@@ -262,6 +361,19 @@ export default function OutfitPage() {
           </button>
         </div>
 
+        <WeatherPanel
+          place={place}
+          weather={weather}
+          note={weatherNote}
+          unit={unit}
+          on={weatherOn}
+          band={band}
+          fellBack={fellBackSlots}
+          onPlace={choosePlace}
+          onUnit={changeUnit}
+          onOn={changeWeatherOn}
+        />
+
         {status && <p className="mt-4 text-sm text-paper/80">{status}</p>}
 
         {!status && missingRequired.length > 0 && (
@@ -316,6 +428,178 @@ export default function OutfitPage() {
         )}
       </section>
     </main>
+  );
+}
+
+const darkBtn =
+  "font-utility text-[10px] uppercase tracking-wider border border-brass text-brass px-3 py-1.5 rounded-[2px] hover:bg-brass hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed";
+const linkBtn = "font-utility text-[10px] uppercase tracking-wider text-paper/70 underline hover:text-brass";
+
+function WeatherPanel({
+  place,
+  weather,
+  note,
+  unit,
+  on,
+  band,
+  fellBack,
+  onPlace,
+  onUnit,
+  onOn,
+}: {
+  place: Place | null;
+  weather: Weather | null;
+  note: string;
+  unit: Unit;
+  on: boolean;
+  band: ReturnType<typeof bandFor> | null;
+  fellBack: readonly string[];
+  onPlace: (p: Place | null) => void;
+  onUnit: (u: Unit) => void;
+  onOn: (on: boolean) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PlaceResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const search = async () => {
+    if (!query.trim()) return;
+    setSearching(true);
+    setMessage("");
+    try {
+      const found = await searchPlaces(query);
+      setResults(found);
+      if (found.length === 0) setMessage("No places found. Try another spelling.");
+    } catch {
+      setMessage("Couldn't search right now. Try again in a moment.");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      setMessage("Your browser can't share its location. Search for your city instead.");
+      return;
+    }
+    setMessage("Finding your location…");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // Rounded to about 1 km: plenty for weather, and less precise to store.
+        onPlace({
+          name: "Your location",
+          lat: Math.round(pos.coords.latitude * 100) / 100,
+          lon: Math.round(pos.coords.longitude * 100) / 100,
+        });
+        setMessage("");
+      },
+      () => setMessage("Couldn't get your location. Search for your city instead."),
+      { timeout: 10000 }
+    );
+  };
+
+  const info = weather ? describeCode(weather.code) : null;
+
+  return (
+    <div className="mt-6 border border-dashed border-paper/30 rounded-[2px] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-utility text-[10px] uppercase tracking-wider text-brass">Weather</span>
+        {place && (
+          <label className="flex items-center gap-2 font-utility text-[10px] uppercase tracking-wider text-paper/80">
+            <input type="checkbox" className="accent-brass" checked={on} onChange={(e) => onOn(e.target.checked)} />
+            Dress for the weather
+          </label>
+        )}
+      </div>
+
+      {place ? (
+        <div className="mt-2">
+          {weather && info ? (
+            <p className="text-sm">
+              <span className="font-semibold">{place.name}</span> · {formatTemp(weather.tempC, unit)} (feels{" "}
+              {formatTemp(weather.feelsC, unit)}) · {info.text} · H {formatTemp(weather.highC, unit)} / L{" "}
+              {formatTemp(weather.lowC, unit)}
+            </p>
+          ) : (
+            <p className="text-sm text-paper/70">{note || "…"}</p>
+          )}
+
+          {on && band && (
+            <p className="mt-1 text-xs text-paper/70">
+              {BAND_ADVICE[band]}
+              {info?.wet ? " Wet out, so bring a rain layer." : ""}
+            </p>
+          )}
+          {on && fellBack.length > 0 && (
+            <p className="mt-1 text-xs text-brass">
+              Nothing you own for {fellBack.join(", ")} suits this weather, so those show your other options.
+            </p>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <button type="button" className={linkBtn} onClick={() => onPlace(null)}>
+              Change location
+            </button>
+            <button type="button" className={linkBtn} onClick={() => onUnit(unit === "C" ? "F" : "C")}>
+              Show in °{unit === "C" ? "F" : "C"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <p className="text-xs text-paper/70">
+            Add your city and outfits will favour pieces that suit today&apos;s weather.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void search();
+              }}
+              placeholder="Search your city"
+              aria-label="Search your city"
+              className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:ring-1 focus:ring-denim"
+            />
+            <button type="button" className={darkBtn} onClick={() => void search()} disabled={searching}>
+              {searching ? "Searching…" : "Search"}
+            </button>
+            <button type="button" className={darkBtn} onClick={useMyLocation}>
+              Use my location
+            </button>
+          </div>
+          {results.length > 0 && (
+            <ul className="mt-2 flex flex-col gap-1">
+              {results.map((r) => (
+                <li key={`${r.lat},${r.lon}`}>
+                  <button
+                    type="button"
+                    className="w-full text-left text-sm border border-paper/20 rounded-[2px] px-3 py-1.5 hover:border-brass"
+                    onClick={() => {
+                      onPlace({ name: r.name, lat: r.lat, lon: r.lon });
+                      setResults([]);
+                      setQuery("");
+                    }}
+                  >
+                    {r.name}
+                    {r.detail ? <span className="text-paper/60">, {r.detail}</span> : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {message && <p className="mt-2 text-xs text-paper/70">{message}</p>}
+        </div>
+      )}
+
+      <p className="mt-3 text-[10px] text-paper/50">
+        Weather data by{" "}
+        <a href="https://open-meteo.com" className="underline hover:text-brass" target="_blank" rel="noreferrer">
+          Open-Meteo.com
+        </a>
+      </p>
+    </div>
   );
 }
 

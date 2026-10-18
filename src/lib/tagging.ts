@@ -2,6 +2,7 @@
 // rules that make sure whatever comes back is safe to put in the Add Item form.
 import { z } from "zod";
 import { FORMALITY, OCCASIONS } from "@/lib/outfit";
+import { WARMTH_LEVELS } from "@/lib/weather";
 
 // "type" is the older free-form field on items; these are the choices on the form.
 export const ITEM_TYPES = ["shirt", "tee", "pants", "shorts", "shoes", "jacket", "hoodie", "accessory"] as const;
@@ -15,6 +16,7 @@ export const TagSuggestionSchema = z.object({
   subcategory: z.enum(ITEM_SUBCATEGORIES).nullable().describe("Only for accessories; null for tops, bottoms and footwear"),
   occasions: z.array(z.enum(OCCASIONS)).describe("Every occasion this item would realistically be worn for"),
   formality: z.array(z.enum(FORMALITY)).describe("Every formality level this item suits"),
+  warmth: z.enum(WARMTH_LEVELS).nullable().describe("How warm the item is to wear; null for accessories where it doesn't apply"),
 });
 
 export type TagSuggestion = z.infer<typeof TagSuggestionSchema>;
@@ -36,6 +38,12 @@ type: the closest of shirt, tee, pants, shorts, shoes, jacket, hoodie. Use acces
 occasions: choose every occasion the item would realistically be worn for, from work, wfh, dining, date, casual_hangout, special_event, travel, outdoor, gym. Use gym only for athletic or workout wear. Be selective: a few honest choices beat listing everything.
 
 formality: choose every level the item suits, from casual, smart_casual, business_casual, formal. A plain tee is casual. An oxford shirt is casual and smart_casual. A suit jacket is business_casual and formal.
+
+warmth: how warm the item is to wear.
+- light: short sleeves, thin fabric, shorts, sandals, canvas or mesh shoes
+- medium: long-sleeve shirts, light sweaters, jeans and trousers, sneakers, loafers
+- heavy: jackets, coats, hoodies, thick knits, boots, lined or insulated pieces
+Use null only for accessories where warmth doesn't apply (a watch, belt, sunglasses). Hats, scarves and gloves can be light, medium or heavy.
 
 name: a short, plain name with the colour first, at most 4 words. Do not include brand names unless clearly visible.
 
@@ -60,5 +68,7 @@ export function cleanSuggestion(s: TagSuggestion): TagSuggestion {
     subcategory: isAccessory ? s.subcategory ?? "other" : null,
     occasions: Array.from(new Set(s.occasions)),
     formality: Array.from(new Set(s.formality)),
+    // The main garments always get a warmth so weather outfits can use them.
+    warmth: s.warmth ?? (isAccessory ? null : "medium"),
   };
 }
