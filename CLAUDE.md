@@ -61,3 +61,23 @@ Bottom
 - Work in small, sequential steps. State the plan and which file(s) you'll touch before editing.
 - Don't modify working features (auth, existing closet upload, navigation) unless the current task requires it.
 - If something in this file conflicts with what I ask for in a session, point it out before proceeding rather than silently picking one.
+
+## Current status (as of 2026-10-18)
+**Code**
+- `main` is up to date with `origin/main`. Per-item tag editing on the Closet screen is merged (PR #3). `npm run build` passes with no errors (only `<img>` warnings).
+- Build Session 1 is done: items taxonomy migration, tagging fields in the Add Item form, Outfit screen with occasion/formality slot filtering, and the design system applied to the Outfit screen only.
+
+**Not done yet**
+- Design system is not applied to Closet, Auth, Selfie, Try-On or NavBar.
+- `globals.css` body still uses the default white background and Arial; `layout.tsx` metadata title is still "Create Next App".
+- Session 2: Swap (Auto + Choose from Closet), Dismiss on accessory slots.
+- AI tagging (Should-have priority).
+
+**Login (working as of 2026-10-18)**
+- Supabase project is `style-me-2` (org "Mochi N Boba Inc.", free tier). Free-tier projects pause after inactivity. It was found paused on 2026-10-18 and showed 'Restoration in progress'; it is now Healthy. Check the dashboard shows Healthy before testing login.
+- Magic-link login uses Supabase's built-in email sender (option A, no custom email service). It is limited to about 2 login emails per hour and, as I understand Supabase's rules, only delivers to people on the Supabase team. On 2026-07-30 this caused "email rate limit exceeded". Do not send repeated test logins. A custom email service (e.g. Resend) is only worth setting up once other people need to sign in; it has NOT been set up.
+- Supabase Auth URL Configuration (set 2026-10-18): Site URL `https://style-me-six.vercel.app`; Redirect URLs `https://style-me-six.vercel.app/**` and `http://localhost:3000/**`. These were the defaults (`localhost:3000`, no redirects) before, which would have sent login links to a page that doesn't exist.
+- The 3 restored items (Blue Oxford Shirt, Black Jeans, White Sneakers) are tagged Casual Hangout / Dining / Date with Casual / Smart Casual formality. The Outfit page renders them. They have no photos (the storage backup was not restored).
+
+**Environment (Windows)**
+- The project folder path must not contain `&` or `'`. Set `$env:ComSpec = "C:\Windows\System32\cmd.exe"` before npm commands in PowerShell sessions. Pin the folder "Always keep on this device" in OneDrive.
