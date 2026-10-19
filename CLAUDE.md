@@ -84,6 +84,8 @@ Bottom
 
 - Polish step 1 (2026-10-19): readable names via `src/lib/labels.ts` (`label()`: "WFH", "Casual Hangout", "Top"), used for every dropdown, checkbox and chip; thin line icons in `src/components/Icon.tsx` (nav, Closet filters and photo buttons, Selfie buttons, Home cards, Weather). Next planned: a livelier palette and Closet-as-wardrobe-doors / Try-On-as-mirror / Outfit-on-hangers looks, after the user shares the example app they had in mind (not found in the project files). Those go beyond the design system above, so ask before applying.
 
+- Redesign (branch `redesign`, git tag `classic` = the look before it; say "go back to classic" to revert): Closet shelves sit inside a walnut wardrobe whose two doors swing open on load (`.wardrobe*` in `globals.css`; respects reduced-motion), Try-On selfie in a brass arched mirror (`.mirror-*`), hangers on top and bottom outfit cards, coloured occasion tags (`occasionTone` in `labels.ts`), extra palette colours walnut / gold / sage / terracotta / plum, warmer page glow and header gradient. Not merged to main until the user approves.
+
 **Not done yet**
 Everything planned is built and live as of 2026-10-19. What remains is on the user's side or needs their decision:
 - Photos: the user will bulk-load their photos at the very end (Closet > "Add many photos at once"). The 3 restored items (Blue Oxford Shirt, Black Jeans, White Sneakers) still have `image_path` values pointing at photo files that were lost with the old Supabase project, so signing them returns a harmless 400 and they show "No image"; give them photos with each card's "Add image" button (bulk upload creates NEW items, so photographing those 3 there would make duplicates).

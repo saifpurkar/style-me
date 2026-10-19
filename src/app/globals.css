@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #33302b; /* charcoal: shows behind and below the pages */
+  --background: #2b2925; /* charcoal, slightly deeper: shows behind and below the pages */
   --foreground: #211f1c; /* ink: default text, so pages still on white stay readable */
 }
 
@@ -17,13 +17,150 @@
   --color-charcoal: #33302b;
   --color-denim: #33475b;
   --color-brass: #b08d57;
+  /* Extra accents (redesign): wood for the wardrobe, soft gold glow, and three tag colours */
+  --color-walnut: #6b4830;
+  --color-walnut-deep: #2f1f14;
+  --color-gold: #d9bb7e;
+  --color-sage: #4f7358;
+  --color-terracotta: #b95f45;
+  --color-plum: #75506f;
   --font-display: var(--font-fraunces);
   --font-body: var(--font-inter);
   --font-utility: var(--font-plex-mono);
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  /* A faint warm glow at the top and a cool one at the bottom, so the page is not one flat grey */
+  background-image:
+    radial-gradient(900px 420px at 15% -80px, rgba(176, 141, 87, 0.16), transparent 70%),
+    radial-gradient(900px 500px at 100% 100%, rgba(51, 71, 91, 0.35), transparent 70%);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+/* ---------- Wardrobe (Closet) ---------- */
+.wardrobe {
+  position: relative;
+  perspective: 1800px;
+  padding: 14px;
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #7a5336, #4f3321);
+  border: 1px solid rgba(217, 187, 126, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.wardrobe-inside {
+  background:
+    radial-gradient(600px 260px at 50% 0, rgba(217, 187, 126, 0.16), transparent 70%),
+    linear-gradient(180deg, #241a13, #17110c);
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  padding: 22px 18px 30px;
+  min-height: 14rem;
+  box-shadow: inset 0 6px 18px rgba(0, 0, 0, 0.7);
+}
+/* The two doors cover the shelves, then swing open to the sides when the page loads. */
+.wardrobe-door {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  width: calc(50% - 14px);
+  z-index: 5;
+  pointer-events: none;
+  backface-visibility: hidden;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #86593a, #5a3a25);
+  border: 1px solid rgba(217, 187, 126, 0.55);
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.5);
+  animation-duration: 1.5s;
+  animation-delay: 0.35s;
+  animation-timing-function: cubic-bezier(0.55, 0, 0.2, 1);
+  animation-fill-mode: forwards;
+}
+.wardrobe-door::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border: 1px solid rgba(217, 187, 126, 0.4);
+}
+.wardrobe-door::after {
+  content: "";
+  position: absolute;
+  top: 46%;
+  width: 6px;
+  height: 56px;
+  background: linear-gradient(90deg, #e6c98a, #b08d57);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.door-left {
+  left: 14px;
+  transform-origin: left center;
+  animation-name: door-left;
+}
+.door-left::after {
+  right: 12px;
+}
+.door-right {
+  right: 14px;
+  transform-origin: right center;
+  animation-name: door-right;
+}
+.door-right::after {
+  left: 12px;
+}
+@keyframes door-left {
+  to { transform: rotateY(-82deg); }
+}
+@keyframes door-right {
+  to { transform: rotateY(82deg); }
+}
+/* Each item sits on its own wooden shelf board. */
+.shelf-cell {
+  position: relative;
+}
+.shelf-cell::after {
+  content: "";
+  position: absolute;
+  left: -0.5rem;
+  right: -0.5rem;
+  bottom: -1.15rem;
+  height: 9px;
+  background: linear-gradient(180deg, #8a5d3c, #5a3a25);
+  border-top: 1px solid rgba(217, 187, 126, 0.5);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- Mirror (Try-On) ---------- */
+.mirror-frame {
+  padding: 12px;
+  border-radius: 999px 999px 2px 2px;
+  background: linear-gradient(135deg, #ecd197 0%, #b08d57 35%, #7d5f33 65%, #d9bb7e 100%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.mirror-glass {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px 999px 0 0;
+  border: 2px solid rgba(0, 0, 0, 0.55);
+  background: #d9d6cf;
+}
+.mirror-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.22) 42%, rgba(255, 255, 255, 0.05) 52%, transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 30%);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .wardrobe-door {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
 }

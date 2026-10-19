@@ -9,9 +9,9 @@ import BulkUpload from "@/components/BulkUpload";
 import { isSlot, slotOf, type Slot } from "@/lib/outfit";
 import { shrinkToJpegBase64 } from "@/lib/image";
 import type { TagSuggestion } from "@/lib/tagging";
-import { chipCls, fieldCls, labelCls, outlineBtn, primaryBtn } from "@/lib/ui";
+import { fieldCls, labelCls, outlineBtn, primaryBtn } from "@/lib/ui";
 import { WARMTH_LEVELS } from "@/lib/weather";
-import { label } from "@/lib/labels";
+import { formalityTone, label, occasionTone } from "@/lib/labels";
 import Icon, { iconFor } from "@/components/Icon";
 
 type Item = {
@@ -48,6 +48,8 @@ const filterOff =
   "font-utility text-[10px] uppercase tracking-wider border border-paper/30 text-paper/80 px-3 py-1.5 rounded-[2px] hover:border-brass";
 const filterOn =
   "font-utility text-[10px] uppercase tracking-wider border border-brass bg-brass text-ink px-3 py-1.5 rounded-[2px]";
+
+const chipBase = "font-utility text-[10px] uppercase tracking-wider border px-1.5 py-0.5 rounded-[2px]";
 
 // An item still needs tagging if the outfit logic can't fully use it yet.
 function needsTags(it: Item): boolean {
@@ -677,9 +679,13 @@ export default function ClosetPage() {
         )}
 
         {/* Items grid */}
-        <div className="grid gap-4 mt-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="wardrobe mt-4">
+          <div className="wardrobe-door door-left" aria-hidden="true" />
+          <div className="wardrobe-door door-right" aria-hidden="true" />
+          <div className="wardrobe-inside">
+        <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {visibleItems.map((it) => (
-            <div key={it.id} className="bg-paper text-ink border border-ink/20 rounded-[2px] p-4">
+            <div key={it.id} className="shelf-cell bg-paper text-ink border border-ink/20 rounded-[2px] p-4">
               {/* Thumbnail if present */}
               {it.image_url ? (
                 <img
@@ -781,14 +787,14 @@ export default function ClosetPage() {
                   {it.formality && it.formality.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {it.formality.map((f) => (
-                        <span key={f} className={chipCls}>{label(f)}</span>
+                        <span key={f} className={`${chipBase} ${formalityTone}`}>{label(f)}</span>
                       ))}
                     </div>
                   )}
                   {it.occasions && it.occasions.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {it.occasions.map((o) => (
-                        <span key={o} className={`${chipCls} border-brass text-brass`}>{label(o)}</span>
+                        <span key={o} className={`${chipBase} ${occasionTone(o)}`}>{label(o)}</span>
                       ))}
                     </div>
                   )}
@@ -837,6 +843,8 @@ export default function ClosetPage() {
                   : "No items yet."}
             </p>
           )}
+        </div>
+          </div>
         </div>
       </section>
     </main>

@@ -304,6 +304,7 @@ export default function OutfitPage() {
         slot={slot}
         item={current}
         required={!isAccessorySlot(slot)}
+        hang={slot === "top" || slot === "bottom"}
         menuOpen={menuSlot === slot}
         canAuto={canAutoSwap(candidates, current.id)}
         onToggleMenu={() => setMenuSlot((m) => (m === slot ? null : slot))}
@@ -623,6 +624,7 @@ function OutfitCard({
   required,
   menuOpen,
   canAuto,
+  hang,
   onToggleMenu,
   onAutoSwap,
   onChoose,
@@ -633,6 +635,7 @@ function OutfitCard({
   required: boolean;
   menuOpen: boolean;
   canAuto: boolean;
+  hang?: boolean;
   onToggleMenu: () => void;
   onAutoSwap: () => void;
   onChoose: () => void;
@@ -645,7 +648,13 @@ function OutfitCard({
 
   return (
     // On a phone three cards must fit in one row, so the width follows the screen (26vw), up to 9rem.
-    <div data-swap-root className="relative w-[26vw] min-w-[5.5rem] max-w-36 border border-ink/20 rounded-[2px] p-2 bg-paper">
+    <div data-swap-root className={`relative w-[26vw] min-w-[5.5rem] max-w-36 border border-ink/20 rounded-[2px] p-2 bg-paper ${hang ? "mt-7" : ""}`}>
+      {hang && (
+        <svg viewBox="0 0 48 28" aria-hidden="true" className="absolute -top-7 left-1/2 h-7 w-12 -translate-x-1/2 text-brass" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M24 14v-3a3.5 3.5 0 1 0-3.5-3.5" />
+          <path d="M24 14 4 25.5h40L24 14Z" />
+        </svg>
+      )}
       <div className="flex items-center justify-between mb-1">
         <span className={`font-utility text-[10px] uppercase tracking-wider ${accent}`}>{label(slot)}</span>
         {onDismiss && (

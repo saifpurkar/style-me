@@ -26,7 +26,7 @@ export default function NavBar() {
   ];
 
   return (
-    <header className="w-full border-b border-paper/15 bg-charcoal sticky top-0 z-50">
+    <header className="w-full border-b border-gold/25 bg-gradient-to-r from-charcoal via-charcoal to-walnut-deep sticky top-0 z-50">
       {/* On a phone the links drop under the logo; from sm up they sit beside it. */}
       <nav className="mx-auto max-w-6xl flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Logo + App Name */}

@@ -133,7 +133,8 @@ export default function TryOnPage() {
           <div>
             <h2 className="font-display font-semibold text-xl mb-3">Preview</h2>
             {selfieUrl ? (
-              <div className="relative w-full max-w-sm aspect-[3/4] rounded-[2px] border border-dashed border-paper/40 overflow-hidden bg-paper">
+              <div className="mirror-frame w-full max-w-sm">
+              <div className="mirror-glass relative w-full aspect-[3/4]">
                 <img
                   src={selfieUrl}
                   alt="Your selfie"
@@ -148,6 +149,7 @@ export default function TryOnPage() {
                     style={OVERLAY_STYLE[slot]}
                   />
                 ))}
+              </div>
               </div>
             ) : (
               <p className="text-paper/70">
