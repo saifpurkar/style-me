@@ -58,7 +58,7 @@ const STATUS_LABEL: Record<RowStatus, string> = {
   queued: "Waiting",
   working: "Working",
   done: "Saved",
-  "needs-tags": "Saved, needs tags",
+  "needs-tags": "Saved, needs details",
   failed: "Not saved",
 };
 
@@ -180,11 +180,11 @@ export default function BulkUpload({ onDone }: { onDone: () => void }) {
   const failed = rows.filter((r) => r.status === "failed").length;
 
   return (
-    <div className={`${panelCls} mt-6 grid gap-3`}>
-      <div className="font-utility text-xs uppercase tracking-wider text-denim">Add many photos</div>
+    <div className={`${panelCls} mt-5 grid gap-3`}>
+      <h2 className="text-lg font-bold">Add many photos</h2>
       <p className="text-sm text-ink/70">
         Choose as many photos as you like, one item per photo. Each is tagged by AI and saved to your closet. If the AI
-        can&apos;t tag one, it is still saved and marked so you can find it with the &quot;Needs tags&quot; filter.
+        can&apos;t tag one, it is still saved and marked so you can find it with the &quot;Needs details&quot; filter.
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -215,14 +215,14 @@ export default function BulkUpload({ onDone }: { onDone: () => void }) {
         <>
           <p className="text-xs text-ink/70" aria-live="polite">
             {finished} of {rows.length} done
-            {needTags > 0 ? ` · ${needTags} need tags` : ""}
+            {needTags > 0 ? ` · ${needTags} need details` : ""}
             {failed > 0 ? ` · ${failed} not saved` : ""}
           </p>
           <ul className="max-h-64 overflow-y-auto grid gap-1">
             {rows.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ink/10 py-1 text-xs">
+              <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line py-1.5 text-xs">
                 <span className="truncate max-w-[16rem]">{r.file.name}</span>
-                <span className={r.status === "failed" ? "text-red-700" : r.status === "needs-tags" ? "text-brass" : "text-ink/70"}>
+                <span className={r.status === "failed" ? "text-red-700" : r.status === "needs-tags" ? "text-peach-ink" : "text-ink/70"}>
                   {STATUS_LABEL[r.status]}
                   {r.note ? ` — ${r.note}` : ""}
                 </span>

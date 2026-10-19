@@ -1,20 +1,29 @@
-// Shared look for the Style Me design system (ink/paper/charcoal/denim/brass,
-// 2px corners, thin rules). Class strings only, so any page can use them.
+// Shared look for Style Me (friendly, rounded, cream and coral). Class strings only,
+// so any page can use them. Colours live in globals.css.
 
 export const fieldCls =
-  "border border-ink/30 bg-paper text-ink px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:ring-1 focus:ring-denim";
-export const labelCls = "font-utility text-[10px] uppercase tracking-wider text-ink/60";
-// Buttons are a little taller on phones (py-2.5) so they are easy to tap.
-export const primaryBtn =
-  "font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2.5 sm:py-2 rounded-[2px] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed";
-export const outlineBtn =
-  "font-utility text-[10px] uppercase tracking-wider border border-denim text-denim px-3 py-2.5 sm:py-1.5 rounded-[2px] hover:bg-denim hover:text-paper";
-export const chipCls =
-  "font-utility text-[10px] uppercase tracking-wider border border-ink/25 text-ink/80 px-1.5 py-0.5 rounded-[2px]";
+  "w-full border border-ink/15 bg-white text-ink px-4 py-3 rounded-2xl text-sm placeholder:text-ink/40 focus:outline-none focus:border-coral focus:ring-2 focus:ring-coral/25";
+export const labelCls = "text-xs font-semibold text-ink/60";
 
-// A paper surface with a dashed edge (forms, panels) and a plain paper card (items).
-export const panelCls = "bg-paper text-ink border border-dashed border-ink/40 rounded-[2px] p-5";
-export const cardCls = "bg-paper text-ink border border-ink/20 rounded-[2px] p-4";
+const btnBase =
+  "inline-flex items-center justify-center gap-1.5 rounded-full font-semibold transition active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed";
+// The one main action on a screen.
+export const primaryBtn = `${btnBase} text-sm bg-coral text-white px-5 py-3 hover:bg-coral-dark`;
+// Everything else.
+export const outlineBtn = `${btnBase} text-sm font-medium bg-white text-ink border border-ink/15 px-4 py-2.5 hover:bg-ink/5`;
+// A quiet text-only action.
+export const linkBtn = "text-sm font-medium text-ink/60 underline-offset-2 hover:text-coral hover:underline";
 
-// A whole page: charcoal background, paper text, Inter body.
-export const pageCls = "min-h-screen bg-charcoal text-paper font-body";
+export const chipCls = "inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full";
+
+// A white surface (forms, panels) and a smaller white card (items).
+export const panelCls = "bg-white text-ink rounded-3xl p-5 soft-shadow";
+export const cardCls = "bg-white text-ink rounded-2xl p-3 soft-shadow";
+
+// A whole page: cream background, room at the bottom for the tab bar.
+export const pageCls = "min-h-screen bg-cream text-ink font-body pb-32";
+// The centred column every page content sits in.
+export const containerCls = "mx-auto w-full max-w-3xl px-4 pt-6";
+export const h1Cls = "text-2xl font-extrabold tracking-tight text-ink";
+export const h2Cls = "text-lg font-bold text-ink";
+export const mutedCls = "text-sm text-ink/60";

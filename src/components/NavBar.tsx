@@ -6,56 +6,62 @@ import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Icon, { type IconName } from "@/components/Icon";
 
+type Tab = { href: string; label: string; icon: IconName };
+
+// The bar at the bottom of every screen: four places, with Add in the middle.
 export default function NavBar() {
   const pathname = usePathname();
   const [signedIn, setSignedIn] = useState(false);
 
-  // Show "Account" instead of "Sign in" once logged in.
+  // Show "You" instead of "Sign in" once logged in.
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(!!session));
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const links: { href: string; label: string; icon: IconName }[] = [
+  const left: Tab[] = [
+    { href: "/", label: "Home", icon: "home" },
     { href: "/closet", label: "Closet", icon: "closet" },
-    { href: "/outfit", label: "Outfit", icon: "outfit" },
-    { href: "/try-on", label: "Try-On", icon: "tryon" },
-    { href: "/selfie", label: "Selfie", icon: "selfie" },
-    { href: "/auth", label: signedIn ? "Account" : "Sign in", icon: "account" },
+  ];
+  const right: Tab[] = [
+    { href: "/outfit", label: "Outfits", icon: "outfit" },
+    { href: "/auth", label: signedIn ? "You" : "Sign in", icon: "account" },
   ];
 
-  return (
-    <header className="w-full border-b border-gold/25 bg-gradient-to-r from-charcoal via-charcoal to-walnut-deep sticky top-0 z-50">
-      {/* On a phone the links drop under the logo; from sm up they sit beside it. */}
-      <nav className="mx-auto max-w-6xl flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Logo + App Name */}
-        <Link href="/" className="font-display font-semibold text-xl text-paper whitespace-nowrap">
-          Style Me
-        </Link>
+  const tab = ({ href, label, icon }: Tab) => {
+    const active = pathname === href;
+    return (
+      <Link
+        key={href}
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={`flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-semibold transition ${
+          active ? "text-coral" : "text-ink/50 hover:text-ink"
+        }`}
+      >
+        <Icon name={icon} className="h-6 w-6" strokeWidth={active ? 2.4 : 2} />
+        {label}
+      </Link>
+    );
+  };
 
-        {/* Navigation Links */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-utility text-xs uppercase tracking-wider whitespace-nowrap">
-          {links.map(({ href, label, icon }) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={
-                  active
-                    ? "inline-flex items-center gap-1.5 text-brass border-b border-brass pb-0.5"
-                    : "inline-flex items-center gap-1.5 text-paper/80 hover:text-brass"
-                }
-              >
-                <Icon name={icon} className="h-3.5 w-3.5" />
-                {label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-    </header>
+  return (
+    <nav
+      aria-label="Main"
+      className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+    >
+      <div className="flex w-full max-w-md items-center rounded-[28px] bg-white px-2 py-2 shadow-[0_12px_32px_-10px_rgba(58,46,37,0.45)] ring-1 ring-ink/5">
+        {left.map(tab)}
+        <Link
+          href="/closet?add=1"
+          aria-label="Add an item"
+          className="-mt-8 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-coral text-white shadow-[0_8px_18px_-6px_rgba(242,107,79,0.8)] ring-4 ring-cream transition active:scale-95"
+        >
+          <Icon name="add" className="h-7 w-7" strokeWidth={2.6} />
+        </Link>
+        {right.map(tab)}
+      </div>
+    </nav>
   );
 }

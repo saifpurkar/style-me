@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 import NavBar from "@/components/NavBar";
-import { pageCls, panelCls } from "@/lib/ui";
+import Icon, { type IconName } from "@/components/Icon";
+import { TONES, type Tone } from "@/lib/labels";
+import { containerCls, h1Cls, linkBtn, mutedCls, pageCls, panelCls, primaryBtn } from "@/lib/ui";
 
 type Item = {
   id: string;
@@ -119,60 +122,78 @@ export default function TryOnPage() {
 
   return (
     <main className={pageCls}>
-      <NavBar />
-      <section className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="font-display font-semibold text-3xl text-paper">Try it on</h1>
-        <p className="text-paper/70 mt-2">
-          Pick a top, bottom, and pair of shoes from your closet to preview them over your selfie.
-        </p>
+      <div className={containerCls}>
+        <h1 className={h1Cls}>Try it on</h1>
+        <p className={`${mutedCls} mt-0.5`}>Pick a top, bottom and shoes to preview over your selfie.</p>
 
-        {status && <p className="mt-4 text-sm text-paper/80">{status}</p>}
+        {status && (
+          <p className="mt-4 rounded-2xl bg-sand px-4 py-2.5 text-sm font-medium text-sand-ink" role="status">
+            {status}
+          </p>
+        )}
 
-        <div className="mt-8 grid gap-8 md:grid-cols-2">
-          {/* Selfie + overlay preview */}
+        <div className="mt-6 grid gap-8 md:grid-cols-2">
+          {/* Selfie + overlay preview, in a mirror */}
           <div>
-            <h2 className="font-display font-semibold text-xl mb-3">Preview</h2>
             {selfieUrl ? (
-              <div className="mirror-frame w-full max-w-sm">
-              <div className="mirror-glass relative w-full aspect-[3/4]">
-                <img
-                  src={selfieUrl}
-                  alt="Your selfie"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                {selectedItems.map(({ slot, item }) => (
-                  <img
-                    key={slot}
-                    src={item.image_url ?? undefined}
-                    alt={item.name}
-                    className="absolute object-contain drop-shadow-lg opacity-90"
-                    style={OVERLAY_STYLE[slot]}
-                  />
-                ))}
-              </div>
-              </div>
+              <>
+                <div className="mirror-frame mx-auto w-full max-w-sm">
+                  <div className="mirror-glass relative aspect-[3/4] w-full">
+                    <img
+                      src={selfieUrl}
+                      alt="Your selfie"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    {selectedItems.map(({ slot, item }) => (
+                      <img
+                        key={slot}
+                        src={item.image_url ?? undefined}
+                        alt={item.name}
+                        className="absolute object-contain opacity-90 drop-shadow-lg"
+                        style={OVERLAY_STYLE[slot]}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-3 text-center">
+                  <Link href="/selfie" className={linkBtn}>
+                    Change selfie
+                  </Link>
+                </div>
+              </>
             ) : (
-              <p className="text-paper/70">
-                No selfie found. Go to{" "}
-                <a className="underline hover:text-brass" href="/selfie">
-                  the Selfie page
-                </a>{" "}
-                to add one.
-              </p>
+              !status && (
+                <div className={`${panelCls} text-center`}>
+                  <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-lilac text-lilac-ink">
+                    <Icon name="tryon" className="h-7 w-7" />
+                  </span>
+                  <p className="mt-3 text-base font-bold">No selfie yet</p>
+                  <p className={`${mutedCls} mt-1`}>Add one and you can see your outfit on you.</p>
+                  <Link href="/selfie" className={`${primaryBtn} mt-4`}>
+                    <Icon name="selfie" className="h-4 w-4" />
+                    Add a selfie
+                  </Link>
+                </div>
+              )
             )}
           </div>
 
           {/* Pickers */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {SLOTS.map((slot) => (
               <div key={slot} className={panelCls}>
-                <h2 className="font-display font-semibold text-xl mb-3">{SLOT_LABEL[slot]}</h2>
+                <h2 className="mb-3 flex items-center gap-2 text-base font-bold">
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-full ${TONES[SLOT_TONE[slot]].soft}`}>
+                    <Icon name={SLOT_ICON[slot]} className="h-4 w-4" />
+                  </span>
+                  {SLOT_LABEL[slot]}
+                </h2>
                 {itemsBySlot[slot].length === 0 ? (
-                  <p className="text-sm text-ink/70">
-                    No {SLOT_LABEL[slot].toLowerCase()} items in your closet yet.
+                  <p className="text-sm text-ink/60">
+                    No {SLOT_LABEL[slot].toLowerCase()} in your closet yet.
                   </p>
                 ) : (
-                  <div className="flex gap-3 overflow-x-auto pb-2">
+                  <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
                     {itemsBySlot[slot].map((it) => {
                       const isSelected = selected[slot] === it.id;
                       return (
@@ -180,22 +201,18 @@ export default function TryOnPage() {
                           key={it.id}
                           onClick={() => toggleSelect(slot, it.id)}
                           aria-pressed={isSelected}
-                          className={`shrink-0 w-24 border rounded-[2px] p-2 text-left bg-paper text-ink ${
-                            isSelected ? "border-denim ring-1 ring-denim" : "border-ink/20 hover:border-denim"
+                          className={`w-24 shrink-0 rounded-2xl bg-cream p-1.5 text-left transition ${
+                            isSelected ? "ring-2 ring-coral" : "ring-1 ring-line hover:ring-ink/30"
                           }`}
                         >
                           {it.image_url ? (
-                            <img
-                              src={it.image_url}
-                              alt={it.name}
-                              className="w-full h-20 object-cover rounded-[2px]"
-                            />
+                            <img src={it.image_url} alt={it.name} className="h-20 w-full rounded-xl object-cover" />
                           ) : (
-                            <div className="w-full h-20 bg-ink/5 rounded-[2px] flex items-center justify-center text-ink/40 text-xs">
-                              No image
+                            <div className={`flex h-20 w-full items-center justify-center rounded-xl ${TONES[SLOT_TONE[slot]].soft}`}>
+                              <Icon name={SLOT_ICON[slot]} className="h-6 w-6 opacity-70" />
                             </div>
                           )}
-                          <div className="mt-1 text-xs truncate">{it.name}</div>
+                          <div className="mt-1 truncate text-xs font-semibold">{it.name}</div>
                         </button>
                       );
                     })}
@@ -205,7 +222,11 @@ export default function TryOnPage() {
             ))}
           </div>
         </div>
-      </section>
+      </div>
+      <NavBar />
     </main>
   );
 }
+
+const SLOT_ICON: Record<Slot, IconName> = { top: "top", bottom: "bottom", shoes: "footwear" };
+const SLOT_TONE: Record<Slot, Tone> = { top: "sky", bottom: "lilac", shoes: "peach" };

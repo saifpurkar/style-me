@@ -9,9 +9,9 @@ import BulkUpload from "@/components/BulkUpload";
 import { isSlot, slotOf, type Slot } from "@/lib/outfit";
 import { shrinkToJpegBase64 } from "@/lib/image";
 import type { TagSuggestion } from "@/lib/tagging";
-import { fieldCls, labelCls, outlineBtn, primaryBtn } from "@/lib/ui";
+import { chipCls, containerCls, fieldCls, h1Cls, h2Cls, labelCls, linkBtn, mutedCls, outlineBtn, pageCls, panelCls, primaryBtn } from "@/lib/ui";
 import { WARMTH_LEVELS } from "@/lib/weather";
-import { formalityTone, label, occasionTone } from "@/lib/labels";
+import { TONES, categoryTone, formalityTone, label, occasionTone, type Tone } from "@/lib/labels";
 import Icon, { iconFor } from "@/components/Icon";
 
 type Item = {
@@ -41,15 +41,8 @@ function toggleValue(arr: string[], val: string): string[] {
   return arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val];
 }
 
-// Buttons that sit on the dark page background (the shared ones are for paper panels).
-const darkBtn =
-  "font-utility text-[10px] uppercase tracking-wider border border-brass text-brass px-3 py-1.5 rounded-[2px] hover:bg-brass hover:text-ink";
-const filterOff =
-  "font-utility text-[10px] uppercase tracking-wider border border-paper/30 text-paper/80 px-3 py-1.5 rounded-[2px] hover:border-brass";
-const filterOn =
-  "font-utility text-[10px] uppercase tracking-wider border border-brass bg-brass text-ink px-3 py-1.5 rounded-[2px]";
-
-const chipBase = "font-utility text-[10px] uppercase tracking-wider border px-1.5 py-0.5 rounded-[2px]";
+const filterPill = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold soft-shadow transition";
+const iconBtn = "flex h-9 w-9 items-center justify-center rounded-full bg-cream text-ink/70 transition hover:bg-ink hover:text-white";
 
 // An item still needs tagging if the outfit logic can't fully use it yet.
 function needsTags(it: Item): boolean {
@@ -59,34 +52,45 @@ function needsTags(it: Item): boolean {
 }
 
 
-function CheckGroup({
+// A group of tap-to-select pills (instead of tiny checkboxes).
+function PillGroup({
   legend,
   options,
   selected,
   onToggle,
+  toneOf,
+  withIcons = false,
   className = "",
 }: {
   legend: string;
   options: readonly string[];
   selected: string[];
   onToggle: (value: string) => void;
+  toneOf?: (value: string) => Tone;
+  withIcons?: boolean;
   className?: string;
 }) {
   return (
-    <fieldset className={`border border-ink/30 rounded-[2px] px-3 py-2 ${className}`}>
-      <legend className={`${labelCls} px-1`}>{legend}</legend>
-      <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {options.map((o) => (
-          <label key={o} className="text-xs flex items-center gap-1 text-ink">
-            <input
-              type="checkbox"
-              className="accent-denim"
-              checked={selected.includes(o)}
-              onChange={() => onToggle(o)}
-            />
-            {label(o)}
-          </label>
-        ))}
+    <fieldset className={className}>
+      <legend className={`${labelCls} mb-2`}>{legend}</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => {
+          const on = selected.includes(o);
+          const tone = TONES[toneOf ? toneOf(o) : "plain"];
+          const glyph = withIcons ? iconFor(o) : null;
+          return (
+            <button
+              key={o}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onToggle(o)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${on ? tone.solid : "bg-cream text-ink/70 hover:text-ink"}`}
+            >
+              {glyph && <Icon name={glyph} className="h-3.5 w-3.5" />}
+              {label(o)}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
   );
@@ -110,6 +114,11 @@ export default function ClosetPage() {
   const [categoryFilter, setCategoryFilter] = useState<"all" | (typeof CATEGORIES)[number]>("all");
   const [onlyNeedsTags, setOnlyNeedsTags] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  // The + button in the tab bar comes here as /closet?add=1 to open the Add form.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("add") === "1") setShowForm(true);
+  }, []);
 
   const [name, setName] = useState("");
   const [type, setType] = useState("shirt");
@@ -306,6 +315,7 @@ export default function ClosetPage() {
       if (cameraInputRef.current) cameraInputRef.current.value = "";
       if (libraryInputRef.current) libraryInputRef.current.value = "";
       setStatus("Added!");
+      setShowForm(false);
       await loadItems();
     }
   };
@@ -438,196 +448,201 @@ export default function ClosetPage() {
     }
   };
 
-  return (
-    <main className="min-h-screen bg-charcoal text-paper font-body">
-      <NavBar />
-      <section className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="font-display font-semibold text-3xl text-paper">
-          {pickSlot ? `Choose ${label(pickSlot)}` : "Closet"}
-        </h1>
 
-        {pickSlot && (
-          <p className="mt-2 text-sm text-paper/70">
-            Pick an item for your outfit&apos;s {label(pickSlot).toLowerCase()} slot, or{" "}
-            <a href="/outfit" className="underline hover:text-brass">go back to the outfit</a>.
+  const addPhotoTile =
+    "flex flex-1 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-ink/15 bg-cream px-3 py-4 text-xs font-semibold text-ink/70 transition hover:border-coral hover:text-coral";
+
+  return (
+    <main className={pageCls}>
+      <div className={containerCls}>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h1 className={h1Cls}>{pickSlot ? `Choose a ${label(pickSlot).toLowerCase()}` : "My closet"}</h1>
+            <p className={`${mutedCls} mt-0.5`}>
+              {pickSlot ? (
+                <>
+                  Pick one for your outfit, or <a href="/outfit" className="font-semibold text-coral underline">go back</a>.
+                </>
+              ) : (
+                `${items.length} ${items.length === 1 ? "piece" : "pieces"}`
+              )}
+            </p>
+          </div>
+          {!pickSlot && (
+            <div className="flex shrink-0 gap-2">
+              <button type="button" className={outlineBtn} onClick={() => setShowBulk((v) => !v)} aria-expanded={showBulk}>
+                <Icon name="images" className="h-4 w-4" />
+                Bulk
+              </button>
+              <button type="button" className={primaryBtn} onClick={() => setShowForm((v) => !v)} aria-expanded={showForm}>
+                <Icon name={showForm ? "x" : "add"} className="h-4 w-4" strokeWidth={2.6} />
+                {showForm ? "Close" : "Add"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Status / messages */}
+        {status && (
+          <p className="mt-4 rounded-2xl bg-sand px-4 py-2.5 text-sm font-medium text-sand-ink" role="status">
+            {status}
           </p>
         )}
 
-        {/* Status / messages */}
-        {status && <p className="mt-3 text-sm text-paper/80">{status}</p>}
-
         {/* Add many photos at once (not while picking an item for an outfit) */}
-        {!pickSlot && (
-          <div className="mt-4">
-            <button type="button" className={`${darkBtn} inline-flex items-center gap-1.5`} onClick={() => setShowBulk((v) => !v)}>
-              <Icon name="images" className="h-3.5 w-3.5" />
-              {showBulk ? "Hide bulk upload" : "Add many photos at once"}
-            </button>
-            {showBulk && <BulkUpload onDone={loadItems} />}
-          </div>
-        )}
+        {!pickSlot && showBulk && <BulkUpload onDone={loadItems} />}
 
         {/* Add Item form (hidden while picking an item for an outfit) */}
-        <form
-          onSubmit={insertItem}
-          className={`mt-6 bg-paper text-ink border border-dashed border-ink/40 rounded-[2px] p-5 grid gap-4 sm:grid-cols-2 ${pickSlot ? "hidden" : ""}`}
-        >
-          <div className="sm:col-span-2 font-utility text-xs uppercase tracking-wider text-denim">Add item</div>
+        {!pickSlot && showForm && (
+          <form onSubmit={insertItem} className={`${panelCls} mt-5 grid gap-4 sm:grid-cols-2`}>
+            <h2 className={`${h2Cls} sm:col-span-2`}>Add a piece</h2>
 
-          <label className="grid gap-1">
-            <span className={labelCls}>Name</span>
-            <input
-              type="text"
-              placeholder="e.g., Navy Polo"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={fieldCls}
-            />
-          </label>
-
-          <label className="grid gap-1">
-            <span className={labelCls}>Type</span>
-            <select value={type} onChange={(e) => setType(e.target.value)} className={fieldCls}>
-              <option value="shirt">{label("shirt")}</option>
-              <option value="tee">{label("tee")}</option>
-              <option value="pants">{label("pants")}</option>
-              <option value="shorts">{label("shorts")}</option>
-              <option value="shoes">{label("shoes")}</option>
-              <option value="jacket">{label("jacket")}</option>
-              <option value="hoodie">{label("hoodie")}</option>
-              <option value="accessory">{label("accessory")}</option>
-            </select>
-          </label>
-
-          {/* Photo: Take Photo and Upload from Library are both offered */}
-          <div className="sm:col-span-2 grid gap-2">
-            <span className={labelCls}>Photo</span>
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className={`${outlineBtn} inline-flex items-center gap-1.5`} onClick={() => cameraInputRef.current?.click()}>
-                <Icon name="selfie" className="h-3.5 w-3.5" />
-                Take photo
-              </button>
-              <button type="button" className={`${outlineBtn} inline-flex items-center gap-1.5`} onClick={() => libraryInputRef.current?.click()}>
-                <Icon name="upload" className="h-3.5 w-3.5" />
-                Upload from library
-              </button>
-              {file && (
-                <>
-                  <span className="text-xs text-ink/70 truncate max-w-[14rem]">{file.name}</span>
-                  <button
-                    type="button"
-                    className="font-utility text-[10px] uppercase tracking-wider text-ink/60 underline hover:text-ink"
-                    onClick={() => {
-                      choosePhoto(null);
-                      if (cameraInputRef.current) cameraInputRef.current.value = "";
-                      if (libraryInputRef.current) libraryInputRef.current.value = "";
-                    }}
-                  >
-                    Remove
-                  </button>
-                </>
-              )}
-            </div>
-            {previewUrl && (
-              <img src={previewUrl} alt="Selected photo" className="h-24 w-24 object-cover rounded-[2px] border border-ink/20" />
-            )}
-            {(suggesting || suggestNote) && (
-              <div className="flex flex-wrap items-center gap-3" aria-live="polite">
-                <span className="text-xs text-ink/70">
-                  {suggesting ? "Looking at your photo…" : suggestNote}
-                </span>
-                {!suggesting && file && (
-                  <button
-                    type="button"
-                    className="font-utility text-[10px] uppercase tracking-wider text-denim underline hover:text-ink"
-                    onClick={() => void suggestFromPhoto(file)}
-                  >
-                    Suggest again
-                  </button>
-                )}
+            {/* Photo: Take Photo and Upload from Library are both offered */}
+            <div className="grid gap-2 sm:col-span-2">
+              <div className="flex gap-3">
+                <button type="button" className={addPhotoTile} onClick={() => cameraInputRef.current?.click()}>
+                  <Icon name="selfie" className="h-6 w-6" />
+                  Take photo
+                </button>
+                <button type="button" className={addPhotoTile} onClick={() => libraryInputRef.current?.click()}>
+                  <Icon name="upload" className="h-6 w-6" />
+                  Upload from library
+                </button>
               </div>
-            )}
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(e) => choosePhoto(e.target.files?.[0] ?? null)}
-              className="hidden"
-            />
-            <input
-              ref={libraryInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => choosePhoto(e.target.files?.[0] ?? null)}
-              className="hidden"
-            />
-          </div>
+              {previewUrl && (
+                <div className="flex items-center gap-3">
+                  <img src={previewUrl} alt="Selected photo" className="h-20 w-20 rounded-2xl object-cover" />
+                  <div className="grid gap-1">
+                    <span className="max-w-[14rem] truncate text-xs text-ink/60">{file?.name}</span>
+                    <button
+                      type="button"
+                      className={`${linkBtn} text-left text-xs`}
+                      onClick={() => {
+                        choosePhoto(null);
+                        if (cameraInputRef.current) cameraInputRef.current.value = "";
+                        if (libraryInputRef.current) libraryInputRef.current.value = "";
+                      }}
+                    >
+                      Remove photo
+                    </button>
+                  </div>
+                </div>
+              )}
+              {(suggesting || suggestNote) && (
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-mint px-4 py-2.5 text-sm text-mint-ink" aria-live="polite">
+                  <Icon name="outfit" className="h-4 w-4" />
+                  <span>{suggesting ? "Looking at your photo…" : suggestNote}</span>
+                  {!suggesting && file && (
+                    <button type="button" className="font-semibold underline" onClick={() => void suggestFromPhoto(file)}>
+                      Suggest again
+                    </button>
+                  )}
+                </div>
+              )}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => choosePhoto(e.target.files?.[0] ?? null)}
+                className="hidden"
+              />
+              <input
+                ref={libraryInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => choosePhoto(e.target.files?.[0] ?? null)}
+                className="hidden"
+              />
+            </div>
 
-          <label className="grid gap-1">
-            <span className={labelCls}>Category</span>
-            <select
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setSubcategory("");
-              }}
-              className={fieldCls}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{label(c)}</option>
-              ))}
-            </select>
-          </label>
-
-          {category === "accessory" && (
             <label className="grid gap-1">
-              <span className={labelCls}>Subcategory</span>
-              <select value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className={fieldCls}>
-                <option value="">— subcategory —</option>
-                {SUBCATEGORIES.map((s) => (
-                  <option key={s} value={s}>{label(s)}</option>
+              <span className={labelCls}>Name</span>
+              <input
+                type="text"
+                placeholder="e.g., Navy Polo"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={fieldCls}
+              />
+            </label>
+
+            <label className="grid gap-1">
+              <span className={labelCls}>Type</span>
+              <select value={type} onChange={(e) => setType(e.target.value)} className={fieldCls}>
+                {["shirt", "tee", "pants", "shorts", "shoes", "jacket", "hoodie", "accessory"].map((t) => (
+                  <option key={t} value={t}>{label(t)}</option>
                 ))}
               </select>
             </label>
-          )}
 
-          <label className="grid gap-1">
-            <span className={labelCls}>Warmth</span>
-            <select value={warmth} onChange={(e) => setWarmth(e.target.value)} className={fieldCls}>
-              <option value="">— not set —</option>
-              {WARMTH_LEVELS.map((w) => (
-                <option key={w} value={w}>{label(w)}</option>
-              ))}
-            </select>
-          </label>
+            <label className="grid gap-1">
+              <span className={labelCls}>Category</span>
+              <select
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  setSubcategory("");
+                }}
+                className={fieldCls}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{label(c)}</option>
+                ))}
+              </select>
+            </label>
 
-          <label className="flex items-center gap-2 self-end pb-2 text-sm text-ink">
-            <input type="checkbox" className="accent-denim" checked={rainReady} onChange={(e) => setRainReady(e.target.checked)} />
-            Rain-ready (waterproof)
-          </label>
+            {category === "accessory" ? (
+              <label className="grid gap-1">
+                <span className={labelCls}>Accessory kind</span>
+                <select value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className={fieldCls}>
+                  <option value="">Choose one</option>
+                  {SUBCATEGORIES.map((s) => (
+                    <option key={s} value={s}>{label(s)}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label className="grid gap-1">
+                <span className={labelCls}>Warmth</span>
+                <select value={warmth} onChange={(e) => setWarmth(e.target.value)} className={fieldCls}>
+                  <option value="">Not set</option>
+                  {WARMTH_LEVELS.map((w) => (
+                    <option key={w} value={w}>{label(w)}</option>
+                  ))}
+                </select>
+              </label>
+            )}
 
-          <CheckGroup
-            legend="Occasions"
-            options={OCCASIONS}
-            selected={occasions}
-            onToggle={(o) => setOccasions(toggleValue(occasions, o))}
-            className="sm:col-span-2"
-          />
-          <CheckGroup
-            legend="Formality"
-            options={FORMALITY}
-            selected={formality}
-            onToggle={(f) => setFormality(toggleValue(formality, f))}
-            className="sm:col-span-2"
-          />
+            <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2">
+              <input type="checkbox" className="h-4 w-4 accent-coral" checked={rainReady} onChange={(e) => setRainReady(e.target.checked)} />
+              Rain-ready (waterproof)
+            </label>
 
-          <div className="sm:col-span-2">
-            <button type="submit" className={primaryBtn}>Add item</button>
-          </div>
-        </form>
+            <PillGroup
+              legend="Where would you wear it?"
+              options={OCCASIONS}
+              selected={occasions}
+              onToggle={(o) => setOccasions(toggleValue(occasions, o))}
+              toneOf={occasionTone}
+              withIcons
+              className="sm:col-span-2"
+            />
+            <PillGroup
+              legend="How dressed up?"
+              options={FORMALITY}
+              selected={formality}
+              onToggle={(f) => setFormality(toggleValue(formality, f))}
+              className="sm:col-span-2"
+            />
 
-        {/* Hidden input used for per-item "Change image" */}
+            <div className="sm:col-span-2">
+              <button type="submit" className={`${primaryBtn} w-full sm:w-auto`}>Add to closet</button>
+            </div>
+          </form>
+        )}
+
+        {/* Hidden input used for per-item "Change photo" */}
         <input
           ref={hiddenFileRef}
           type="file"
@@ -637,216 +652,232 @@ export default function ClosetPage() {
         />
 
         {/* Filters */}
-        <div className="mt-8 flex flex-wrap items-center gap-2">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name"
-            aria-label="Search by name"
-            className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:ring-1 focus:ring-denim"
-          />
-          {!pickSlot &&
-            (["all", ...CATEGORIES] as const).map((c) => (
+        {items.length > 0 && (
+          <div className="mt-6 grid gap-3">
+            <div className="relative">
+              <Icon name="search" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search your closet"
+                aria-label="Search by name"
+                className={`${fieldCls} pl-11`}
+              />
+            </div>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {!pickSlot &&
+                (["all", ...CATEGORIES] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-pressed={categoryFilter === c}
+                    onClick={() => setCategoryFilter(c)}
+                    className={`${filterPill} ${categoryFilter === c ? "bg-ink text-white" : "bg-white text-ink/70 hover:text-ink"}`}
+                  >
+                    <Icon name={iconFor(c) ?? "all"} className="h-4 w-4" />
+                    {c === "all" ? "All" : label(c)}
+                  </button>
+                ))}
               <button
-                key={c}
                 type="button"
-                aria-pressed={categoryFilter === c}
-                onClick={() => setCategoryFilter(c)}
-                className={categoryFilter === c ? filterOn : filterOff}
+                aria-pressed={onlyNeedsTags}
+                onClick={() => setOnlyNeedsTags((v) => !v)}
+                className={`${filterPill} ${onlyNeedsTags ? "bg-coral text-white" : "bg-white text-ink/70 hover:text-ink"}`}
               >
-                <span className="inline-flex items-center gap-1.5">
-                  <Icon name={iconFor(c) ?? "all"} className="h-3.5 w-3.5" />
-                  {label(c)}
-                </span>
+                <Icon name="tag" className="h-4 w-4" />
+                Needs details ({needsTagsCount})
               </button>
-            ))}
-          <button
-            type="button"
-            aria-pressed={onlyNeedsTags}
-            onClick={() => setOnlyNeedsTags((v) => !v)}
-            className={onlyNeedsTags ? filterOn : filterOff}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Icon name="tag" className="h-3.5 w-3.5" />
-              Needs tags ({needsTagsCount})
-            </span>
-          </button>
-        </div>
-        {filtering && (
-          <p className="mt-2 text-xs text-paper/60">
-            Showing {visibleItems.length} of {slotItems.length}
-          </p>
+            </div>
+            {filtering && (
+              <p className="text-xs text-ink/50">
+                Showing {visibleItems.length} of {slotItems.length}
+              </p>
+            )}
+          </div>
         )}
 
         {/* Items grid */}
-        <div className="wardrobe mt-4">
-          <div className="wardrobe-door door-left" aria-hidden="true" />
-          <div className="wardrobe-door door-right" aria-hidden="true" />
-          <div className="wardrobe-inside">
-        <div className="grid gap-x-4 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {visibleItems.map((it) => (
-            <div key={it.id} className="shelf-cell bg-paper text-ink border border-ink/20 rounded-[2px] p-4">
-              {/* Thumbnail if present */}
-              {it.image_url ? (
-                <img
-                  src={it.image_url}
-                  alt={it.name}
-                  className="w-full h-40 object-cover rounded-[2px] mb-3"
-                />
-              ) : (
-                <div className="w-full h-40 bg-ink/5 rounded-[2px] mb-3 flex items-center justify-center text-ink/40 text-sm">
-                  No image
-                </div>
-              )}
-
-              <div className="font-semibold">{it.name}</div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink/60">
-                <span>{label(it.type)}</span>
-                <span>·</span>
-                <span>{new Date(it.created_at).toLocaleDateString()}</span>
-              </div>
-              {it.color_primary && <div className="text-sm">Color: {it.color_primary}</div>}
-              {it.brand && <div className="text-sm">Brand: {it.brand}</div>}
-
-              {editingId === it.id ? (
-                <div className="mt-3 grid gap-2 border-t border-dashed border-ink/30 pt-3">
-                  <select
-                    value={editCategory}
-                    onChange={(e) => {
-                      setEditCategory(e.target.value);
-                      setEditSubcategory("");
-                    }}
-                    className={fieldCls}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{label(c)}</option>
-                    ))}
-                  </select>
-
-                  {editCategory === "accessory" && (
-                    <select
-                      value={editSubcategory}
-                      onChange={(e) => setEditSubcategory(e.target.value)}
-                      className={fieldCls}
-                    >
-                      <option value="">— subcategory —</option>
-                      {SUBCATEGORIES.map((s) => (
-                        <option key={s} value={s}>{label(s)}</option>
-                      ))}
-                    </select>
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {visibleItems.map((it) => {
+            const tone = categoryTone(it.category);
+            const editing = editingId === it.id;
+            return (
+              <div key={it.id} className={`flex flex-col overflow-hidden rounded-3xl bg-white soft-shadow ${editing ? "col-span-2 sm:col-span-3 lg:col-span-2" : ""}`}>
+                <div className={`relative ${editing ? "aspect-[16/9]" : "aspect-[4/5]"} bg-cream`}>
+                  {it.image_url ? (
+                    <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className={`flex h-full w-full flex-col items-center justify-center gap-1.5 ${TONES[tone].soft}`}>
+                      <Icon name={iconFor(it.category) ?? "closet"} className="h-10 w-10 opacity-80" />
+                      <span className="text-xs font-semibold opacity-70">No photo yet</span>
+                    </div>
                   )}
-
-                  <select value={editWarmth} onChange={(e) => setEditWarmth(e.target.value)} className={fieldCls}>
-                    <option value="">— warmth not set —</option>
-                    {WARMTH_LEVELS.map((w) => (
-                      <option key={w} value={w}>{label(w)}</option>
-                    ))}
-                  </select>
-
-                  <label className="flex items-center gap-2 text-sm text-ink">
-                    <input
-                      type="checkbox"
-                      className="accent-denim"
-                      checked={editRainReady}
-                      onChange={(e) => setEditRainReady(e.target.checked)}
-                    />
-                    Rain-ready (waterproof)
-                  </label>
-
-                  <CheckGroup
-                    legend="Occasions"
-                    options={OCCASIONS}
-                    selected={editOccasions}
-                    onToggle={(o) => setEditOccasions(toggleValue(editOccasions, o))}
-                  />
-                  <CheckGroup
-                    legend="Formality"
-                    options={FORMALITY}
-                    selected={editFormality}
-                    onToggle={(f) => setEditFormality(toggleValue(editFormality, f))}
-                  />
-
-                  <div className="flex gap-2">
-                    <button type="button" className={primaryBtn} onClick={() => saveEdit(it.id)}>
-                      Save
-                    </button>
-                    <button type="button" className={outlineBtn} onClick={cancelEdit}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
                   {it.category && (
-                    <div className="mt-2 font-utility text-[10px] uppercase tracking-wider text-denim">
-                      {label(it.category)}{it.subcategory ? ` / ${label(it.subcategory)}` : ""}
-                      {it.warmth ? ` · ${label(it.warmth)}` : ""}
-                      {it.rain_ready ? " · Rain-ready" : ""}
-                    </div>
+                    <span className={`absolute left-2 top-2 ${chipCls} ${TONES[tone].soft}`}>
+                      <Icon name={iconFor(it.category) ?? "all"} className="h-3 w-3" />
+                      {label(it.category)}
+                    </span>
                   )}
-                  {it.formality && it.formality.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {it.formality.map((f) => (
-                        <span key={f} className={`${chipBase} ${formalityTone}`}>{label(f)}</span>
-                      ))}
-                    </div>
+                  {needsTags(it) && (
+                    <span className={`absolute right-2 top-2 ${chipCls} ${TONES.sand.soft}`}>Needs details</span>
                   )}
-                  {it.occasions && it.occasions.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {it.occasions.map((o) => (
-                        <span key={o} className={`${chipBase} ${occasionTone(o)}`}>{label(o)}</span>
-                      ))}
-                    </div>
-                  )}
+                </div>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {pickSlot ? (
-                      <button className={primaryBtn} onClick={() => pickItem(it)} type="button">
-                        Use this item
-                      </button>
-                    ) : (
-                      <>
-                        <button className={outlineBtn} onClick={() => onClickChangeImage(it.id)} type="button">
-                          {it.image_url ? "Change image" : "Add image"}
+                <div className="flex flex-1 flex-col p-3">
+                  <div className="truncate text-sm font-bold">{it.name}</div>
+                  <div className="mt-0.5 truncate text-xs text-ink/55">
+                    {[label(it.type), it.subcategory ? label(it.subcategory) : null, it.warmth ? label(it.warmth) : null, it.rain_ready ? "Rain-ready" : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+
+                  {editing ? (
+                    <div className="mt-3 grid gap-3 border-t border-line pt-3">
+                      <select
+                        value={editCategory}
+                        onChange={(e) => {
+                          setEditCategory(e.target.value);
+                          setEditSubcategory("");
+                        }}
+                        className={fieldCls}
+                        aria-label="Category"
+                      >
+                        {CATEGORIES.map((c) => (
+                          <option key={c} value={c}>{label(c)}</option>
+                        ))}
+                      </select>
+
+                      {editCategory === "accessory" && (
+                        <select
+                          value={editSubcategory}
+                          onChange={(e) => setEditSubcategory(e.target.value)}
+                          className={fieldCls}
+                          aria-label="Accessory kind"
+                        >
+                          <option value="">Accessory kind</option>
+                          {SUBCATEGORIES.map((s) => (
+                            <option key={s} value={s}>{label(s)}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      <select value={editWarmth} onChange={(e) => setEditWarmth(e.target.value)} className={fieldCls} aria-label="Warmth">
+                        <option value="">Warmth not set</option>
+                        {WARMTH_LEVELS.map((w) => (
+                          <option key={w} value={w}>{label(w)}</option>
+                        ))}
+                      </select>
+
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-coral"
+                          checked={editRainReady}
+                          onChange={(e) => setEditRainReady(e.target.checked)}
+                        />
+                        Rain-ready (waterproof)
+                      </label>
+
+                      <PillGroup
+                        legend="Where would you wear it?"
+                        options={OCCASIONS}
+                        selected={editOccasions}
+                        onToggle={(o) => setEditOccasions(toggleValue(editOccasions, o))}
+                        toneOf={occasionTone}
+                        withIcons
+                      />
+                      <PillGroup
+                        legend="How dressed up?"
+                        options={FORMALITY}
+                        selected={editFormality}
+                        onToggle={(f) => setEditFormality(toggleValue(editFormality, f))}
+                      />
+
+                      <div className="flex gap-2">
+                        <button type="button" className={primaryBtn} onClick={() => saveEdit(it.id)}>
+                          Save
                         </button>
-                        <button className={outlineBtn} onClick={() => startEdit(it)} type="button">
-                          Edit tags
+                        <button type="button" className={outlineBtn} onClick={cancelEdit}>
+                          Cancel
                         </button>
-                        {confirmDeleteId === it.id ? (
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {((it.occasions && it.occasions.length > 0) || (it.formality && it.formality.length > 0)) && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {(it.occasions ?? []).map((o) => (
+                            <span key={o} className={`${chipCls} ${TONES[occasionTone(o)].soft}`}>{label(o)}</span>
+                          ))}
+                          {(it.formality ?? []).map((f) => (
+                            <span key={f} className={`${chipCls} ${TONES[formalityTone].soft}`}>{label(f)}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
+                        {pickSlot ? (
+                          <button className={`${primaryBtn} w-full`} onClick={() => pickItem(it)} type="button">
+                            Use this
+                          </button>
+                        ) : confirmDeleteId === it.id ? (
                           <>
-                            <button className={primaryBtn} onClick={() => deleteItem(it)} type="button">
+                            <span className="text-xs font-semibold text-ink/70">Delete this?</span>
+                            <button className={`${primaryBtn} px-4 py-2 text-xs`} onClick={() => deleteItem(it)} type="button">
                               Yes, delete
                             </button>
-                            <button className={outlineBtn} onClick={() => setConfirmDeleteId(null)} type="button">
+                            <button className={`${outlineBtn} px-4 py-2 text-xs`} onClick={() => setConfirmDeleteId(null)} type="button">
                               Keep
                             </button>
                           </>
                         ) : (
-                          <button className={outlineBtn} onClick={() => setConfirmDeleteId(it.id)} type="button">
-                            Delete
-                          </button>
+                          <>
+                            <button className={iconBtn} onClick={() => onClickChangeImage(it.id)} type="button" aria-label={it.image_url ? "Change photo" : "Add photo"} title={it.image_url ? "Change photo" : "Add photo"}>
+                              <Icon name="selfie" className="h-4 w-4" />
+                            </button>
+                            <button className={iconBtn} onClick={() => startEdit(it)} type="button" aria-label="Edit details" title="Edit details">
+                              <Icon name="edit" className="h-4 w-4" />
+                            </button>
+                            <button className={`${iconBtn} ml-auto hover:!bg-peach hover:!text-peach-ink`} onClick={() => setConfirmDeleteId(it.id)} type="button" aria-label="Delete" title="Delete">
+                              <Icon name="trash" className="h-4 w-4" />
+                            </button>
+                          </>
                         )}
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
-          {visibleItems.length === 0 && !status && (
-            <p className="text-paper/70 mt-4">
+        {visibleItems.length === 0 && !status && (
+          items.length === 0 && !pickSlot ? (
+            <div className="wardrobe mt-6" key="empty">
+              <div className="wardrobe-door door-left" aria-hidden="true" />
+              <div className="wardrobe-door door-right" aria-hidden="true" />
+              <div className="wardrobe-inside text-center">
+                <p className="text-lg font-bold">Your closet is empty</p>
+                <p className="mx-auto mt-1 max-w-xs text-sm text-white/70">Add your first piece and Style Me will start putting outfits together.</p>
+                <button type="button" className={`${primaryBtn} mt-4`} onClick={() => setShowForm(true)}>
+                  <Icon name="add" className="h-4 w-4" strokeWidth={2.6} />
+                  Add a piece
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-6 text-center text-sm text-ink/60">
               {filtering
                 ? "Nothing matches those filters."
                 : pickSlot
-                  ? `No ${pickSlot} items in your closet yet.`
+                  ? `No ${label(pickSlot).toLowerCase()} items in your closet yet.`
                   : "No items yet."}
             </p>
-          )}
-        </div>
-          </div>
-        </div>
-      </section>
+          )
+        )}
+      </div>
+      <NavBar />
     </main>
   );
 }

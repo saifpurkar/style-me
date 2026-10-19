@@ -6,7 +6,8 @@ import { supabase } from "@/lib/supabase";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { useEffect, useState } from "react";
-import { outlineBtn, pageCls, panelCls, primaryBtn } from "@/lib/ui";
+import Icon from "@/components/Icon";
+import { containerCls, h1Cls, mutedCls, outlineBtn, pageCls, panelCls, primaryBtn } from "@/lib/ui";
 
 export default function AuthPage() {
   const [email, setEmail] = useState<string | null>(null);
@@ -38,16 +39,19 @@ export default function AuthPage() {
 
   return (
     <main className={pageCls}>
-      <NavBar />
-      <section className="mx-auto max-w-md px-4 py-12">
-        <h1 className="font-display font-semibold text-3xl text-paper">
-          {email ? "Account" : "Sign in"}
-        </h1>
+      <div className={containerCls}>
+        <h1 className={h1Cls}>{email ? "You" : "Welcome to Style Me"}</h1>
+        {!email && checked && <p className={`${mutedCls} mt-0.5`}>Sign in to keep your closet safe and in sync.</p>}
 
         {checked && email && (
           <div className={`${panelCls} mt-6`}>
-            <p className="text-sm">
-              Signed in as <span className="font-semibold">{email}</span>
+            <p className="flex items-center gap-3 text-sm">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-peach text-peach-ink">
+                <Icon name="account" className="h-5 w-5" />
+              </span>
+              <span>
+                Signed in as <span className="font-bold">{email}</span>
+              </span>
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href="/closet" className={primaryBtn}>Open closet</Link>
@@ -61,7 +65,7 @@ export default function AuthPage() {
 
         {checked && !email && (
           <div className={`${panelCls} mt-6`}>
-            <p className="mb-4 text-sm text-ink/70">
+            <p className="mb-4 text-sm text-ink/60">
               Enter your email and we&apos;ll send you a link. No password needed.
             </p>
             <Auth
@@ -71,21 +75,21 @@ export default function AuthPage() {
                 variables: {
                   default: {
                     colors: {
-                      brand: "#b08d57",
-                      brandAccent: "#33475b",
-                      brandButtonText: "#211f1c",
-                      inputBackground: "#f6f3ec",
-                      inputBorder: "#211f1c4d",
-                      inputText: "#211f1c",
-                      inputLabelText: "#211f1c99",
-                      messageText: "#211f1c",
+                      brand: "#f26b4f",
+                      brandAccent: "#d9563b",
+                      brandButtonText: "#ffffff",
+                      inputBackground: "#ffffff",
+                      inputBorder: "#3a2e2526",
+                      inputText: "#3a2e25",
+                      inputLabelText: "#3a2e2599",
+                      messageText: "#3a2e25",
                     },
-                    radii: { borderRadiusButton: "2px", buttonBorderRadius: "2px", inputBorderRadius: "2px" },
+                    radii: { borderRadiusButton: "999px", buttonBorderRadius: "999px", inputBorderRadius: "16px" },
                     fonts: {
-                      bodyFontFamily: "var(--font-inter), sans-serif",
-                      buttonFontFamily: "var(--font-plex-mono), monospace",
-                      labelFontFamily: "var(--font-plex-mono), monospace",
-                      inputFontFamily: "var(--font-inter), sans-serif",
+                      bodyFontFamily: "var(--font-jakarta), sans-serif",
+                      buttonFontFamily: "var(--font-jakarta), sans-serif",
+                      labelFontFamily: "var(--font-jakarta), sans-serif",
+                      inputFontFamily: "var(--font-jakarta), sans-serif",
                     },
                   },
                 },
@@ -105,7 +109,8 @@ export default function AuthPage() {
             />
           </div>
         )}
-      </section>
+      </div>
+      <NavBar />
     </main>
   );
 }

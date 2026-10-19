@@ -11,23 +11,27 @@
 - outfits
 - outfit_items
 
-## Design system — follow exactly, ask before deviating
-**Colors**
-- `ink` #211F1C — primary text
-- `paper` #F6F3EC — card/surface background
-- `charcoal` #33302B — app background
-- `denim` #33475B — primary accent (required-slot controls, selects, active states)
-- `brass` #B08D57 — secondary accent (optional-slot controls, primary CTA buttons)
+## Design system (v2 "friendly", on the `redesign` branch; the older look is the git tag `classic`)
+Goal: simple, warm, easy to use on a phone, ready for the public. Inspired by apps like Monefy: big round colourful icons, soft cards, one main action per screen. Ask before deviating.
 
-**Type**
-- Display (headers only): Fraunces, semi-bold
-- Body: Inter
-- Utility (tags, labels, category names): IBM Plex Mono, uppercase, letter-spaced
+**Colours** (tokens in `globals.css`)
+- `cream` #FFF7EC page background; `ink` #3A2E25 text; white cards
+- `coral` #F26B4F: the one accent, used for the main button and the active tab (`coral-dark` on hover)
+- Pastel pairs (soft fill + deep text): `sky` (tops, work), `lilac` (bottoms, gym), `peach` (footwear, dining/date), `mint` (accessories, casual/travel/outdoor), `sand` (special events, notices)
 
-**Layout**
-- Sharp to near-sharp corners (2px radius max)
-- Thin 1–1.5px rules / dashed borders instead of heavy shadows or big rounded cards
-- Outfit screen uses a flat-lay arrangement (see below), not a generic stacked list
+**Type**: Plus Jakarta Sans only (headings bold/extrabold, body regular). No mono or uppercase labels.
+
+**Shape**: rounded (cards 24px, fields 16px, buttons and tags fully round), soft shadows (`soft-shadow`) instead of borders.
+
+**Navigation**: floating bottom tab bar (Home, Closet, big + Add, Outfits, You) in `NavBar.tsx`; every page ends with `<NavBar />` and uses `pageCls` (has bottom padding). Add goes to `/closet?add=1`. Selfie is reached from Try-On ("Change selfie"). Home "Where to?" circles go to `/outfit?occasion=<value>`.
+
+**Icons**: Lucide (`lucide-react`) through `src/components/Icon.tsx`, plus a hand-drawn hanger and trousers. Always use the shared `Icon`; never mix in other icon sets.
+
+**Shared pieces**: `src/lib/ui.ts` (button, field, panel classes), `src/lib/labels.ts` (`label()`, tag tones `TONES`, `occasionTone`, `categoryTone`).
+
+**Moments kept from the earlier redesign**: the brass arched mirror frame on Try-On/Selfie (`.mirror-*`), hangers on top and bottom outfit cards, and the walnut wardrobe whose doors swing open on the empty-closet screen (`.wardrobe*`, respects reduced motion).
+
+**Outfit screen** is still a flat-lay: Headgear / Eyewear / (Watch) Top (Bracelet) / Belt / Bottom / (Footwear) (Bag). Required slots (top, bottom, footwear) have Swap only; accessories have Swap and a remove (x). Swap offers Auto-swap or Choose from closet. "New outfit" re-picks everything. A missing required slot is named in a friendly card with an "Add to your closet" button; empty accessory slots are simply left out.
 
 ## Data model conventions
 `items` table — columns to add/confirm:
@@ -84,7 +88,7 @@ Bottom
 
 - Polish step 1 (2026-10-19): readable names via `src/lib/labels.ts` (`label()`: "WFH", "Casual Hangout", "Top"), used for every dropdown, checkbox and chip; thin line icons in `src/components/Icon.tsx` (nav, Closet filters and photo buttons, Selfie buttons, Home cards, Weather). Next planned: a livelier palette and Closet-as-wardrobe-doors / Try-On-as-mirror / Outfit-on-hangers looks, after the user shares the example app they had in mind (not found in the project files). Those go beyond the design system above, so ask before applying.
 
-- Redesign (branch `redesign`, git tag `classic` = the look before it; say "go back to classic" to revert): Closet shelves sit inside a walnut wardrobe whose two doors swing open on load (`.wardrobe*` in `globals.css`; respects reduced-motion), Try-On selfie in a brass arched mirror (`.mirror-*`), hangers on top and bottom outfit cards, coloured occasion tags (`occasionTone` in `labels.ts`), extra palette colours walnut / gold / sage / terracotta / plum, warmer page glow and header gradient. Not merged to main until the user approves.
+- Redesign v2 (2026-10-19, branch `redesign`, not merged to main until the user approves; say "go back to classic" to restore the tag `classic`): friendly cream/coral look on every screen, floating bottom tab bar, Home with "Where to?" circles, Closet with a photo-first card grid, pill filters and an add form that opens from the + button, Outfit with occasion circles and pill formality, Try-On/Selfie in an arched mirror. Tags renamed in the UI: "Needs tags" is now "Needs details". Google Play / public launch ideas are on hold: first make the app perfect.
 
 **Not done yet**
 Everything planned is built and live as of 2026-10-19. What remains is on the user's side or needs their decision:

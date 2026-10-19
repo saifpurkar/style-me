@@ -1,33 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import RegisterServiceWorker from "@/components/RegisterServiceWorker";
-import { Geist, Geist_Mono, Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["600"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -35,12 +13,12 @@ export const metadata: Metadata = {
   description: "Your AI wardrobe assistant: catalog your clothes and get outfits for any occasion.",
   applicationName: "Style Me",
   icons: { icon: "/icons/192.png", apple: "/icons/180.png" },
-  appleWebApp: { capable: true, title: "Style Me", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Style Me", statusBarStyle: "default" },
 };
 
 // Colours the phone's status bar to match the app when it is installed.
 export const viewport: Viewport = {
-  themeColor: "#33302b",
+  themeColor: "#fff7ec",
   width: "device-width",
   initialScale: 1,
 };
@@ -52,9 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${inter.variable} ${ibmPlexMono.variable} antialiased`}
-      >
+      <body className={`${jakarta.variable} antialiased`}>
         {children}
         <RegisterServiceWorker />
       </body>

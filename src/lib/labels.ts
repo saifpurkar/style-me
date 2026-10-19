@@ -14,31 +14,31 @@ export function label(value: string): string {
     .join(" ");
 }
 
-// Tag colours, grouped by feel, so a card's chips are easy to tell apart at a glance.
+// Soft pastel colours so tags and categories are easy to tell apart at a glance.
 // (Full class names so Tailwind can see them.)
-const TONES = {
-  denim: "border-denim/50 bg-denim/10 text-denim",
-  terracotta: "border-terracotta/50 bg-terracotta/10 text-terracotta",
-  sage: "border-sage/50 bg-sage/10 text-sage",
-  brass: "border-brass/60 bg-brass/10 text-[#7d5f33]",
-  plum: "border-plum/50 bg-plum/10 text-plum",
-  plain: "border-ink/25 bg-ink/5 text-ink/80",
+export const TONES = {
+  sky: { soft: "bg-sky text-sky-ink", solid: "bg-sky-ink text-white" },
+  lilac: { soft: "bg-lilac text-lilac-ink", solid: "bg-lilac-ink text-white" },
+  peach: { soft: "bg-peach text-peach-ink", solid: "bg-peach-ink text-white" },
+  mint: { soft: "bg-mint text-mint-ink", solid: "bg-mint-ink text-white" },
+  sand: { soft: "bg-sand text-sand-ink", solid: "bg-sand-ink text-white" },
+  plain: { soft: "bg-ink/8 text-ink/70", solid: "bg-ink text-white" },
+} as const;
+export type Tone = keyof typeof TONES;
+
+const OCCASION_TONE: Record<string, Tone> = {
+  work: "sky",
+  wfh: "sky",
+  dining: "peach",
+  date: "peach",
+  casual_hangout: "mint",
+  travel: "mint",
+  outdoor: "mint",
+  special_event: "sand",
+  gym: "lilac",
 };
+const CATEGORY_TONE: Record<string, Tone> = { top: "sky", bottom: "lilac", footwear: "peach", accessory: "mint" };
 
-const OCCASION_TONE: Record<string, keyof typeof TONES> = {
-  work: "denim",
-  wfh: "denim",
-  dining: "terracotta",
-  date: "terracotta",
-  casual_hangout: "sage",
-  travel: "sage",
-  outdoor: "sage",
-  special_event: "brass",
-  gym: "plum",
-};
-
-export function occasionTone(value: string): string {
-  return TONES[OCCASION_TONE[value] ?? "plain"];
-}
-
-export const formalityTone = TONES.plain;
+export const occasionTone = (value: string): Tone => OCCASION_TONE[value] ?? "plain";
+export const categoryTone = (value: string | null | undefined): Tone => (value && CATEGORY_TONE[value]) || "plain";
+export const formalityTone: Tone = "plain";

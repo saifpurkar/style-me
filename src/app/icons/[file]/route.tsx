@@ -26,17 +26,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ fil
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#33302b",
+          background: "#f26b4f",
         }}
       >
-        <div style={{ display: "flex", fontSize: size * 0.56, lineHeight: 1, color: "#f6f3ec" }}>S</div>
+        <div style={{ display: "flex", fontSize: size * 0.56, lineHeight: 1, color: "#ffffff" }}>S</div>
         <div
           style={{
             display: "flex",
             width: size * 0.28,
             height: Math.max(3, size * 0.03),
             marginTop: size * 0.03,
-            background: "#b08d57",
+            background: "#ffe3c2",
           }}
         />
       </div>

@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 import NavBar from "@/components/NavBar";
-import Icon from "@/components/Icon";
-import { label } from "@/lib/labels";
+import Icon, { type IconName } from "@/components/Icon";
+import { TONES, label, occasionTone, type Tone } from "@/lib/labels";
+import { containerCls, fieldCls, h1Cls, h2Cls, linkBtn, mutedCls, outlineBtn, pageCls, panelCls, primaryBtn } from "@/lib/ui";
 import {
   ACCESSORY_SLOTS,
   ALL_SLOTS,
@@ -186,6 +188,14 @@ export default function OutfitPage() {
         }
       }
 
+      // Coming from the Home screen's "Where to?" circles (/outfit?occasion=work) starts a fresh outfit.
+      const wanted = new URLSearchParams(window.location.search).get("occasion");
+      if (wanted && (OCCASIONS as readonly string[]).includes(wanted)) {
+        setOccasion(wanted as Occasion);
+        nextSelection = {};
+        nextDismissed = [];
+      }
+
       setSelection(nextSelection);
       setDismissed(nextDismissed);
     } catch {
@@ -303,7 +313,6 @@ export default function OutfitPage() {
         key={slot}
         slot={slot}
         item={current}
-        required={!isAccessorySlot(slot)}
         hang={slot === "top" || slot === "bottom"}
         menuOpen={menuSlot === slot}
         canAuto={canAutoSwap(candidates, current.id)}
@@ -316,53 +325,57 @@ export default function OutfitPage() {
   };
 
   return (
-    <main className="min-h-screen bg-charcoal text-paper font-body">
-      <NavBar />
-      <section className="mx-auto max-w-3xl px-4 py-10">
-        <h1 className="font-display font-semibold text-3xl text-paper">Outfit</h1>
+    <main className={pageCls}>
+      <div className={containerCls}>
+        <h1 className={h1Cls}>Your outfit</h1>
+        <p className={`${mutedCls} mt-0.5`}>
+          {occasionLabel}
+          {showFormality ? ` · ${formalityLabel}` : ""}
+        </p>
 
-        <div className="mt-6 flex flex-wrap items-end gap-4">
-          <div>
-            <label className="block font-utility text-xs uppercase tracking-wider text-paper/70 mb-1">
-              Occasion
-            </label>
-            <select
-              value={occasion}
-              onChange={(e) => setOccasion(e.target.value as Occasion)}
-              className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] focus:outline-none focus:ring-1 focus:ring-denim"
-            >
-              {OCCASIONS.map((o) => (
-                <option key={o} value={o} className="bg-charcoal text-paper">{label(o)}</option>
-              ))}
-            </select>
-          </div>
-
-          {showFormality && (
-            <div>
-              <label className="block font-utility text-xs uppercase tracking-wider text-paper/70 mb-1">
-                Formality
-              </label>
-              <select
-                value={formality}
-                onChange={(e) => setFormality(e.target.value as Formality)}
-                className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] focus:outline-none focus:ring-1 focus:ring-denim"
+        {/* Where to? */}
+        <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {OCCASIONS.map((o) => {
+            const on = o === occasion;
+            const tone = TONES[occasionTone(o)];
+            return (
+              <button
+                key={o}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setOccasion(o)}
+                className="flex shrink-0 flex-col items-center gap-1.5"
               >
-                {FORMALITY.map((f) => (
-                  <option key={f} value={f} className="bg-charcoal text-paper">{label(f)}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={swapEntireOutfit}
-            disabled={!!status || missingRequired.length > 0}
-            className="ml-auto font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2 rounded-[2px] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Swap Entire Outfit
-          </button>
+                <span
+                  className={`flex h-14 w-14 items-center justify-center rounded-full transition ${
+                    on ? `${tone.solid} ring-4 ring-coral/30` : tone.soft
+                  }`}
+                >
+                  <Icon name={o} className="h-6 w-6" />
+                </span>
+                <span className={`text-[11px] font-semibold ${on ? "text-ink" : "text-ink/55"}`}>{label(o)}</span>
+              </button>
+            );
+          })}
         </div>
+
+        {showFormality && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {FORMALITY.map((f) => (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={f === formality}
+                onClick={() => setFormality(f)}
+                className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                  f === formality ? "bg-ink text-white" : "bg-white text-ink/70 soft-shadow hover:text-ink"
+                }`}
+              >
+                {label(f)}
+              </button>
+            ))}
+          </div>
+        )}
 
         <WeatherPanel
           place={place}
@@ -378,66 +391,111 @@ export default function OutfitPage() {
           onOn={changeWeatherOn}
         />
 
-        {status && <p className="mt-4 text-sm text-paper/80">{status}</p>}
+        {status && (
+          <p className="mt-5 rounded-2xl bg-sand px-4 py-2.5 text-sm font-medium text-sand-ink" role="status">
+            {status}
+          </p>
+        )}
 
         {!status && missingRequired.length > 0 && (
-          <div className="mt-6 bg-paper text-ink border border-dashed border-brass rounded-[2px] p-4">
-            <div className="font-utility text-xs uppercase tracking-wider text-brass mb-2">
-              Missing required items
+          <div className={`${panelCls} mt-5`}>
+            <h2 className={h2Cls}>We need a few more pieces</h2>
+            <div className="mt-2 grid gap-1.5">
+              {missingRequired.map((slot) => (
+                <p key={slot} className="flex items-center gap-2 text-sm text-ink/80">
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-full ${TONES[SLOT_TONE[slot]].soft}`}>
+                    <Icon name={SLOT_ICON[slot]} className="h-4 w-4" />
+                  </span>
+                  No {label(slot).toLowerCase()} yet for {occasionLabel}{showFormality ? ` (${formalityLabel})` : ""}.
+                </p>
+              ))}
             </div>
-            {missingRequired.map((slot) => (
-              <p key={slot} className="text-sm">
-                No {slot} tagged for {showFormality ? `${formalityLabel} ` : ""}{occasionLabel} yet.
-              </p>
-            ))}
+            <Link href="/closet?add=1" className={`${primaryBtn} mt-4`}>
+              <Icon name="add" className="h-4 w-4" strokeWidth={2.6} />
+              Add to your closet
+            </Link>
           </div>
         )}
 
         {!status && missingRequired.length === 0 && (
-          <div className="mt-8 bg-paper border border-dashed border-ink/40 rounded-[2px] p-3 sm:p-6 flex flex-col items-center gap-4">
-            {card("headgear")}
-            {card("eyewear")}
+          <>
+            <div className="mt-5 flex flex-col items-center gap-4 rounded-[28px] bg-white p-4 soft-shadow sm:p-6">
+              {card("headgear")}
+              {card("eyewear")}
 
-            <div className="flex items-start justify-center gap-2 sm:gap-4">
-              {card("watch")}
-              {card("top")}
-              {card("bracelet")}
-            </div>
-
-            {card("belt")}
-
-            {card("bottom")}
-
-            <div className="flex items-start justify-center gap-2 sm:gap-4">
-              {card("footwear")}
-              {card("bag")}
-            </div>
-
-            {dismissedSlots.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 border-t border-dashed border-ink/30 pt-4 w-full">
-                <span className="font-utility text-[10px] uppercase tracking-wider text-ink/60">Removed</span>
-                {dismissedSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => restoreSlot(slot)}
-                    className="font-utility text-[10px] uppercase tracking-wider text-brass border border-dashed border-brass rounded-[2px] px-2 py-1 hover:bg-brass hover:text-ink"
-                  >
-                    + {label(slot)}
-                  </button>
-                ))}
+              <div className="flex items-start justify-center gap-2 sm:gap-4">
+                {card("watch")}
+                {card("top")}
+                {card("bracelet")}
               </div>
-            )}
-          </div>
+
+              {card("belt")}
+
+              {card("bottom")}
+
+              <div className="flex items-start justify-center gap-2 sm:gap-4">
+                {card("footwear")}
+                {card("bag")}
+              </div>
+
+              {dismissedSlots.length > 0 && (
+                <div className="mt-2 flex w-full flex-wrap items-center justify-center gap-2 border-t border-line pt-4">
+                  <span className="text-xs font-semibold text-ink/50">Removed</span>
+                  {dismissedSlots.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => restoreSlot(slot)}
+                      className="inline-flex items-center gap-1 rounded-full bg-mint px-3 py-1.5 text-xs font-semibold text-mint-ink"
+                    >
+                      <Icon name="add" className="h-3 w-3" strokeWidth={2.6} />
+                      {label(slot)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button type="button" onClick={swapEntireOutfit} className={primaryBtn}>
+                <Icon name="refresh" className="h-4 w-4" />
+                New outfit
+              </button>
+              <Link href="/try-on" className={outlineBtn}>
+                <Icon name="tryon" className="h-4 w-4" />
+                Try it on
+              </Link>
+            </div>
+          </>
         )}
-      </section>
+      </div>
+      <NavBar />
     </main>
   );
 }
 
-const darkBtn =
-  "font-utility text-[10px] uppercase tracking-wider border border-brass text-brass px-3 py-2.5 sm:py-1.5 rounded-[2px] hover:bg-brass hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed";
-const linkBtn = "font-utility text-[10px] uppercase tracking-wider text-paper/70 underline hover:text-brass";
+const SLOT_ICON: Record<Slot, IconName> = {
+  headgear: "accessory",
+  eyewear: "accessory",
+  watch: "accessory",
+  bracelet: "accessory",
+  belt: "accessory",
+  bag: "accessory",
+  top: "top",
+  bottom: "bottom",
+  footwear: "footwear",
+};
+const SLOT_TONE: Record<Slot, Tone> = {
+  headgear: "mint",
+  eyewear: "mint",
+  watch: "mint",
+  bracelet: "mint",
+  belt: "mint",
+  bag: "mint",
+  top: "sky",
+  bottom: "lilac",
+  footwear: "peach",
+};
 
 function WeatherPanel({
   place,
@@ -508,12 +566,15 @@ function WeatherPanel({
   const info = weather ? describeCode(weather.code) : null;
 
   return (
-    <div className="mt-6 border border-dashed border-paper/30 rounded-[2px] p-4">
+    <div className="mt-5 rounded-3xl bg-sand/60 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 font-utility text-[10px] uppercase tracking-wider text-brass"><Icon name="weather" className="h-3.5 w-3.5" />Weather</span>
+        <span className="inline-flex items-center gap-2 text-sm font-bold text-sand-ink">
+          <Icon name="weather" className="h-5 w-5" />
+          Weather
+        </span>
         {place && (
-          <label className="flex items-center gap-2 font-utility text-[10px] uppercase tracking-wider text-paper/80">
-            <input type="checkbox" className="accent-brass" checked={on} onChange={(e) => onOn(e.target.checked)} />
+          <label className="flex items-center gap-2 text-xs font-semibold text-sand-ink">
+            <input type="checkbox" className="h-4 w-4 accent-coral" checked={on} onChange={(e) => onOn(e.target.checked)} />
             Dress for the weather
           </label>
         )}
@@ -522,17 +583,17 @@ function WeatherPanel({
       {place ? (
         <div className="mt-2">
           {weather && info ? (
-            <p className="text-sm">
-              <span className="font-semibold">{place.name}</span> · {formatTemp(weather.tempC, unit)} (feels{" "}
+            <p className="text-sm text-ink">
+              <span className="font-bold">{place.name}</span> · {formatTemp(weather.tempC, unit)} (feels{" "}
               {formatTemp(weather.feelsC, unit)}) · {info.text} · H {formatTemp(weather.highC, unit)} / L{" "}
               {formatTemp(weather.lowC, unit)}
             </p>
           ) : (
-            <p className="text-sm text-paper/70">{note || "…"}</p>
+            <p className="text-sm text-ink/70">{note || "…"}</p>
           )}
 
           {on && band && (
-            <p className="mt-1 text-xs text-paper/70">
+            <p className="mt-1 text-xs text-ink/70">
               {BAND_ADVICE[band]}
               {weather && isWet(weather)
                 ? noRain.length > 0
@@ -547,7 +608,7 @@ function WeatherPanel({
             </p>
           )}
           {on && fellBack.length > 0 && (
-            <p className="mt-1 text-xs text-brass">
+            <p className="mt-1 text-xs font-semibold text-peach-ink">
               Nothing you own for {fellBack.join(", ")} suits this weather, so your other options are shown.
             </p>
           )}
@@ -562,11 +623,11 @@ function WeatherPanel({
           </div>
         </div>
       ) : (
-        <div className="mt-3">
-          <p className="text-xs text-paper/70">
+        <div className="mt-2">
+          <p className="text-xs text-ink/70">
             Add your city and outfits will favour pieces that suit today&apos;s weather.
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -575,12 +636,12 @@ function WeatherPanel({
               }}
               placeholder="Search your city"
               aria-label="Search your city"
-              className="border border-denim bg-charcoal text-paper px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:ring-1 focus:ring-denim"
+              className={`${fieldCls} basis-full py-2.5`}
             />
-            <button type="button" className={darkBtn} onClick={() => void search()} disabled={searching}>
+            <button type="button" className={outlineBtn} onClick={() => void search()} disabled={searching}>
               {searching ? "Searching…" : "Search"}
             </button>
-            <button type="button" className={darkBtn} onClick={useMyLocation}>
+            <button type="button" className={outlineBtn} onClick={useMyLocation}>
               Use my location
             </button>
           </div>
@@ -590,7 +651,7 @@ function WeatherPanel({
                 <li key={`${r.lat},${r.lon}`}>
                   <button
                     type="button"
-                    className="w-full text-left text-sm border border-paper/20 rounded-[2px] px-3 py-1.5 hover:border-brass"
+                    className="w-full rounded-xl bg-white px-3 py-2 text-left text-sm hover:bg-cream"
                     onClick={() => {
                       onPlace({ name: r.name, lat: r.lat, lon: r.lon });
                       setResults([]);
@@ -598,19 +659,19 @@ function WeatherPanel({
                     }}
                   >
                     {r.name}
-                    {r.detail ? <span className="text-paper/60">, {r.detail}</span> : null}
+                    {r.detail ? <span className="text-ink/60">, {r.detail}</span> : null}
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          {message && <p className="mt-2 text-xs text-paper/70">{message}</p>}
+          {message && <p className="mt-2 text-xs text-ink/70">{message}</p>}
         </div>
       )}
 
-      <p className="mt-3 text-[10px] text-paper/50">
+      <p className="mt-3 text-[10px] text-ink/45">
         Weather data by{" "}
-        <a href="https://open-meteo.com" className="underline hover:text-brass" target="_blank" rel="noreferrer">
+        <a href="https://open-meteo.com" className="underline hover:text-coral" target="_blank" rel="noreferrer">
           Open-Meteo.com
         </a>
       </p>
@@ -621,7 +682,6 @@ function WeatherPanel({
 function OutfitCard({
   item,
   slot,
-  required,
   menuOpen,
   canAuto,
   hang,
@@ -631,8 +691,7 @@ function OutfitCard({
   onDismiss,
 }: {
   item: ItemWithUrl;
-  slot: string;
-  required: boolean;
+  slot: Slot;
   menuOpen: boolean;
   canAuto: boolean;
   hang?: boolean;
@@ -641,71 +700,67 @@ function OutfitCard({
   onChoose: () => void;
   onDismiss?: () => void;
 }) {
-  const accent = required ? "text-denim" : "text-brass";
-  const buttonTone = required
-    ? "border-denim text-denim hover:bg-denim hover:text-paper"
-    : "border-brass text-brass hover:bg-brass hover:text-ink";
+  const tone = TONES[SLOT_TONE[slot]];
 
   return (
     // On a phone three cards must fit in one row, so the width follows the screen (26vw), up to 9rem.
-    <div data-swap-root className={`relative w-[26vw] min-w-[5.5rem] max-w-36 border border-ink/20 rounded-[2px] p-2 bg-paper ${hang ? "mt-7" : ""}`}>
+    <div
+      data-swap-root
+      className={`relative w-[27vw] min-w-[5.75rem] max-w-36 rounded-2xl bg-cream p-2 ring-1 ring-line ${hang ? "mt-7" : ""}`}
+    >
       {hang && (
-        <svg viewBox="0 0 48 28" aria-hidden="true" className="absolute -top-7 left-1/2 h-7 w-12 -translate-x-1/2 text-brass" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 48 28" aria-hidden="true" className="absolute -top-7 left-1/2 h-7 w-12 -translate-x-1/2 text-coral" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M24 14v-3a3.5 3.5 0 1 0-3.5-3.5" />
           <path d="M24 14 4 25.5h40L24 14Z" />
         </svg>
       )}
-      <div className="flex items-center justify-between mb-1">
-        <span className={`font-utility text-[10px] uppercase tracking-wider ${accent}`}>{label(slot)}</span>
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${tone.soft}`}>
+          <Icon name={SLOT_ICON[slot]} className="h-3 w-3" />
+          {label(slot)}
+        </span>
         {onDismiss && (
           <button
             type="button"
             onClick={onDismiss}
             aria-label={`Remove ${label(slot)}`}
-            className="font-utility text-sm leading-none text-brass hover:text-ink px-1"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-ink/45 hover:bg-ink/10 hover:text-ink"
           >
-            ×
+            <Icon name="x" className="h-3.5 w-3.5" strokeWidth={2.4} />
           </button>
         )}
       </div>
       {item.image_url ? (
-        <img src={item.image_url} alt={item.name} className="w-full h-28 object-cover rounded-[2px] mb-1" />
+        <img src={item.image_url} alt={item.name} className="mb-1.5 h-28 w-full rounded-xl object-cover" />
       ) : (
-        <div className="w-full h-28 bg-ink/5 rounded-[2px] mb-1 flex items-center justify-center text-ink/40 text-xs">
-          No image
+        <div className={`mb-1.5 flex h-28 w-full items-center justify-center rounded-xl ${tone.soft}`}>
+          <Icon name={SLOT_ICON[slot]} className="h-8 w-8 opacity-70" />
         </div>
       )}
-      <div className="text-sm font-body text-ink truncate">{item.name}</div>
+      <div className="truncate text-xs font-bold text-ink">{item.name}</div>
 
       <button
         type="button"
         onClick={onToggleMenu}
         aria-expanded={menuOpen}
-        className={`mt-2 w-full font-utility text-[10px] uppercase tracking-wider border rounded-[2px] py-1 ${buttonTone}`}
+        className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-full bg-white py-1.5 text-xs font-semibold text-ink ring-1 ring-line hover:bg-ink hover:text-white"
       >
+        <Icon name="refresh" className="h-3 w-3" strokeWidth={2.4} />
         Swap
       </button>
 
       {menuOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-paper border border-ink/30 rounded-[2px] p-1 flex flex-col gap-1">
+        <div className="absolute left-0 right-0 top-full z-10 mt-1 flex flex-col gap-1 rounded-2xl bg-white p-1.5 shadow-[0_12px_28px_-8px_rgba(58,46,37,0.45)] ring-1 ring-line">
           <button
             type="button"
             onClick={onAutoSwap}
             disabled={!canAuto}
-            className={`font-utility text-[10px] uppercase tracking-wider border rounded-[2px] py-1 disabled:opacity-40 disabled:cursor-not-allowed ${buttonTone}`}
+            className="rounded-xl px-2 py-2 text-left text-xs font-semibold hover:bg-cream disabled:cursor-not-allowed disabled:opacity-40"
           >
             Auto-swap
           </button>
-          {!canAuto && (
-            <span className="font-utility text-[9px] uppercase tracking-wider text-ink/50 text-center">
-              No other match
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={onChoose}
-            className={`font-utility text-[10px] uppercase tracking-wider border rounded-[2px] py-1 ${buttonTone}`}
-          >
+          {!canAuto && <span className="px-2 text-[10px] text-ink/50">No other match</span>}
+          <button type="button" onClick={onChoose} className="rounded-xl px-2 py-2 text-left text-xs font-semibold hover:bg-cream">
             Choose from closet
           </button>
         </div>

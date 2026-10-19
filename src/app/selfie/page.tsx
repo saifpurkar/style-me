@@ -5,7 +5,10 @@ import { supabase } from "@/lib/supabase";
 import Icon from "@/components/Icon";
 import NavBar from "@/components/NavBar";
 import { v4 as uuidv4 } from "uuid";
-import { outlineBtn, pageCls, panelCls, primaryBtn } from "@/lib/ui";
+import { containerCls, h1Cls, h2Cls, linkBtn, mutedCls, pageCls, panelCls, primaryBtn } from "@/lib/ui";
+
+const tile =
+  "flex flex-1 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-ink/15 bg-cream px-3 py-5 text-xs font-semibold text-ink/70 transition hover:border-coral hover:text-coral";
 
 export default function SelfiePage() {
   const [status, setStatus] = useState<string>("");
@@ -119,38 +122,37 @@ export default function SelfiePage() {
 
   return (
     <main className={pageCls}>
-      <NavBar />
-      <section className="mx-auto max-w-3xl px-4 py-10">
-        <h1 className="font-display font-semibold text-3xl text-paper">Selfie</h1>
-        <p className="mt-2 text-paper/70">
-          Add a selfie (a plain background works best). It stays private in your account.
+      <div className={containerCls}>
+        <h1 className={h1Cls}>Your selfie</h1>
+        <p className={`${mutedCls} mt-0.5`}>
+          A full-length photo on a plain background works best. It stays private in your account.
         </p>
 
-        {status && <p className="mt-4 text-sm text-paper/80">{status}</p>}
+        {status && (
+          <p className="mt-4 rounded-2xl bg-sand px-4 py-2.5 text-sm font-medium text-sand-ink" role="status">
+            {status}
+          </p>
+        )}
 
         <form onSubmit={uploadSelfie} className={`${panelCls} mt-6 grid gap-3`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={`${outlineBtn} inline-flex items-center gap-1.5`} onClick={() => cameraRef.current?.click()}>
-              <Icon name="selfie" className="h-3.5 w-3.5" />
+          <div className="flex gap-3">
+            <button type="button" className={tile} onClick={() => cameraRef.current?.click()}>
+              <Icon name="selfie" className="h-6 w-6" />
               Take selfie
             </button>
-            <button type="button" className={`${outlineBtn} inline-flex items-center gap-1.5`} onClick={() => libraryRef.current?.click()}>
-              <Icon name="upload" className="h-3.5 w-3.5" />
+            <button type="button" className={tile} onClick={() => libraryRef.current?.click()}>
+              <Icon name="upload" className="h-6 w-6" />
               Upload from library
             </button>
-            {file && (
-              <>
-                <span className="text-xs text-ink/70 truncate max-w-[14rem]">{file.name}</span>
-                <button
-                  type="button"
-                  className="font-utility text-[10px] uppercase tracking-wider text-ink/60 underline hover:text-ink"
-                  onClick={clearChosen}
-                >
-                  Remove
-                </button>
-              </>
-            )}
           </div>
+          {file && (
+            <div className="flex items-center gap-3 text-sm">
+              <span className="max-w-[14rem] truncate text-ink/70">{file.name}</span>
+              <button type="button" className={linkBtn} onClick={clearChosen}>
+                Remove
+              </button>
+            </div>
+          )}
           <input
             ref={cameraRef}
             type="file"
@@ -174,18 +176,19 @@ export default function SelfiePage() {
         </form>
 
         <div className="mt-8">
-          <h2 className="font-display font-semibold text-xl">Current selfie</h2>
+          <h2 className={h2Cls}>Current selfie</h2>
           {selfieUrl ? (
-            <img
-              src={selfieUrl}
-              alt="Your latest selfie"
-              className="mt-3 w-full max-w-sm rounded-[2px] border border-paper/20"
-            />
+            <div className="mirror-frame mt-3 w-full max-w-xs">
+              <div className="mirror-glass">
+                <img src={selfieUrl} alt="Your latest selfie" className="w-full" />
+              </div>
+            </div>
           ) : (
-            <p className="mt-3 text-paper/70">No selfie yet. Add one above.</p>
+            <p className={`${mutedCls} mt-2`}>No selfie yet. Add one above.</p>
           )}
         </div>
-      </section>
+      </div>
+      <NavBar />
     </main>
   );
 }
