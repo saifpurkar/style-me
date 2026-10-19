@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import Icon from "@/components/Icon";
 import NavBar from "@/components/NavBar";
 import { v4 as uuidv4 } from "uuid";
 import { outlineBtn, pageCls, panelCls, primaryBtn } from "@/lib/ui";
@@ -129,10 +130,12 @@ export default function SelfiePage() {
 
         <form onSubmit={uploadSelfie} className={`${panelCls} mt-6 grid gap-3`}>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={outlineBtn} onClick={() => cameraRef.current?.click()}>
+            <button type="button" className={`${outlineBtn} inline-flex items-center gap-1.5`} onClick={() => cameraRef.current?.click()}>
+              <Icon name="selfie" className="h-3.5 w-3.5" />
               Take selfie
             </button>
-            <button type="button" className={outlineBtn} onClick={() => libraryRef.current?.click()}>
+            <button type="button" className={`${outlineBtn} inline-flex items-center gap-1.5`} onClick={() => libraryRef.current?.click()}>
+              <Icon name="upload" className="h-3.5 w-3.5" />
               Upload from library
             </button>
             {file && (

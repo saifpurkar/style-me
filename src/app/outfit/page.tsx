@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import NavBar from "@/components/NavBar";
+import Icon from "@/components/Icon";
+import { label } from "@/lib/labels";
 import {
   ACCESSORY_SLOTS,
   ALL_SLOTS,
@@ -81,13 +83,6 @@ function validPlace(p: unknown): p is Place {
   return !!x && typeof x.name === "string" && Number.isFinite(x.lat) && Number.isFinite(x.lon);
 }
 
-function label(value: string): string {
-  if (value === "wfh") return "WFH";
-  return value
-    .split("_")
-    .map((w) => w[0].toUpperCase() + w.slice(1))
-    .join(" ");
-}
 
 export default function OutfitPage() {
   const router = useRouter();
@@ -427,7 +422,7 @@ export default function OutfitPage() {
                     onClick={() => restoreSlot(slot)}
                     className="font-utility text-[10px] uppercase tracking-wider text-brass border border-dashed border-brass rounded-[2px] px-2 py-1 hover:bg-brass hover:text-ink"
                   >
-                    + {slot}
+                    + {label(slot)}
                   </button>
                 ))}
               </div>
@@ -514,7 +509,7 @@ function WeatherPanel({
   return (
     <div className="mt-6 border border-dashed border-paper/30 rounded-[2px] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-utility text-[10px] uppercase tracking-wider text-brass">Weather</span>
+        <span className="inline-flex items-center gap-1.5 font-utility text-[10px] uppercase tracking-wider text-brass"><Icon name="weather" className="h-3.5 w-3.5" />Weather</span>
         {place && (
           <label className="flex items-center gap-2 font-utility text-[10px] uppercase tracking-wider text-paper/80">
             <input type="checkbox" className="accent-brass" checked={on} onChange={(e) => onOn(e.target.checked)} />
@@ -652,12 +647,12 @@ function OutfitCard({
     // On a phone three cards must fit in one row, so the width follows the screen (26vw), up to 9rem.
     <div data-swap-root className="relative w-[26vw] min-w-[5.5rem] max-w-36 border border-ink/20 rounded-[2px] p-2 bg-paper">
       <div className="flex items-center justify-between mb-1">
-        <span className={`font-utility text-[10px] uppercase tracking-wider ${accent}`}>{slot}</span>
+        <span className={`font-utility text-[10px] uppercase tracking-wider ${accent}`}>{label(slot)}</span>
         {onDismiss && (
           <button
             type="button"
             onClick={onDismiss}
-            aria-label={`Remove ${slot}`}
+            aria-label={`Remove ${label(slot)}`}
             className="font-utility text-sm leading-none text-brass hover:text-ink px-1"
           >
             ×

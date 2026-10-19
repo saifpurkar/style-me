@@ -11,6 +11,8 @@ import { shrinkToJpegBase64 } from "@/lib/image";
 import type { TagSuggestion } from "@/lib/tagging";
 import { chipCls, fieldCls, labelCls, outlineBtn, primaryBtn } from "@/lib/ui";
 import { WARMTH_LEVELS } from "@/lib/weather";
+import { label } from "@/lib/labels";
+import Icon, { iconFor } from "@/components/Icon";
 
 type Item = {
   id: string;
@@ -54,9 +56,6 @@ function needsTags(it: Item): boolean {
   return !it.warmth;
 }
 
-function pretty(value: string): string {
-  return value.replace(/_/g, " ");
-}
 
 function CheckGroup({
   legend,
@@ -83,7 +82,7 @@ function CheckGroup({
               checked={selected.includes(o)}
               onChange={() => onToggle(o)}
             />
-            {pretty(o)}
+            {label(o)}
           </label>
         ))}
       </div>
@@ -442,12 +441,12 @@ export default function ClosetPage() {
       <NavBar />
       <section className="mx-auto max-w-6xl px-4 py-10">
         <h1 className="font-display font-semibold text-3xl text-paper">
-          {pickSlot ? `Choose ${pickSlot}` : "Closet"}
+          {pickSlot ? `Choose ${label(pickSlot)}` : "Closet"}
         </h1>
 
         {pickSlot && (
           <p className="mt-2 text-sm text-paper/70">
-            Pick an item for your outfit&apos;s {pickSlot} slot, or{" "}
+            Pick an item for your outfit&apos;s {label(pickSlot).toLowerCase()} slot, or{" "}
             <a href="/outfit" className="underline hover:text-brass">go back to the outfit</a>.
           </p>
         )}
@@ -458,7 +457,8 @@ export default function ClosetPage() {
         {/* Add many photos at once (not while picking an item for an outfit) */}
         {!pickSlot && (
           <div className="mt-4">
-            <button type="button" className={darkBtn} onClick={() => setShowBulk((v) => !v)}>
+            <button type="button" className={`${darkBtn} inline-flex items-center gap-1.5`} onClick={() => setShowBulk((v) => !v)}>
+              <Icon name="images" className="h-3.5 w-3.5" />
               {showBulk ? "Hide bulk upload" : "Add many photos at once"}
             </button>
             {showBulk && <BulkUpload onDone={loadItems} />}
@@ -486,14 +486,14 @@ export default function ClosetPage() {
           <label className="grid gap-1">
             <span className={labelCls}>Type</span>
             <select value={type} onChange={(e) => setType(e.target.value)} className={fieldCls}>
-              <option value="shirt">shirt</option>
-              <option value="tee">tee</option>
-              <option value="pants">pants</option>
-              <option value="shorts">shorts</option>
-              <option value="shoes">shoes</option>
-              <option value="jacket">jacket</option>
-              <option value="hoodie">hoodie</option>
-              <option value="accessory">accessory</option>
+              <option value="shirt">{label("shirt")}</option>
+              <option value="tee">{label("tee")}</option>
+              <option value="pants">{label("pants")}</option>
+              <option value="shorts">{label("shorts")}</option>
+              <option value="shoes">{label("shoes")}</option>
+              <option value="jacket">{label("jacket")}</option>
+              <option value="hoodie">{label("hoodie")}</option>
+              <option value="accessory">{label("accessory")}</option>
             </select>
           </label>
 
@@ -501,10 +501,12 @@ export default function ClosetPage() {
           <div className="sm:col-span-2 grid gap-2">
             <span className={labelCls}>Photo</span>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className={outlineBtn} onClick={() => cameraInputRef.current?.click()}>
+              <button type="button" className={`${outlineBtn} inline-flex items-center gap-1.5`} onClick={() => cameraInputRef.current?.click()}>
+                <Icon name="selfie" className="h-3.5 w-3.5" />
                 Take photo
               </button>
-              <button type="button" className={outlineBtn} onClick={() => libraryInputRef.current?.click()}>
+              <button type="button" className={`${outlineBtn} inline-flex items-center gap-1.5`} onClick={() => libraryInputRef.current?.click()}>
+                <Icon name="upload" className="h-3.5 w-3.5" />
                 Upload from library
               </button>
               {file && (
@@ -571,7 +573,7 @@ export default function ClosetPage() {
               className={fieldCls}
             >
               {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{label(c)}</option>
               ))}
             </select>
           </label>
@@ -582,7 +584,7 @@ export default function ClosetPage() {
               <select value={subcategory} onChange={(e) => setSubcategory(e.target.value)} className={fieldCls}>
                 <option value="">— subcategory —</option>
                 {SUBCATEGORIES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>{label(s)}</option>
                 ))}
               </select>
             </label>
@@ -593,7 +595,7 @@ export default function ClosetPage() {
             <select value={warmth} onChange={(e) => setWarmth(e.target.value)} className={fieldCls}>
               <option value="">— not set —</option>
               {WARMTH_LEVELS.map((w) => (
-                <option key={w} value={w}>{w}</option>
+                <option key={w} value={w}>{label(w)}</option>
               ))}
             </select>
           </label>
@@ -650,7 +652,10 @@ export default function ClosetPage() {
                 onClick={() => setCategoryFilter(c)}
                 className={categoryFilter === c ? filterOn : filterOff}
               >
-                {c}
+                <span className="inline-flex items-center gap-1.5">
+                  <Icon name={iconFor(c) ?? "all"} className="h-3.5 w-3.5" />
+                  {label(c)}
+                </span>
               </button>
             ))}
           <button
@@ -659,7 +664,10 @@ export default function ClosetPage() {
             onClick={() => setOnlyNeedsTags((v) => !v)}
             className={onlyNeedsTags ? filterOn : filterOff}
           >
-            Needs tags ({needsTagsCount})
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="tag" className="h-3.5 w-3.5" />
+              Needs tags ({needsTagsCount})
+            </span>
           </button>
         </div>
         {filtering && (
@@ -687,7 +695,7 @@ export default function ClosetPage() {
 
               <div className="font-semibold">{it.name}</div>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink/60">
-                <span>{it.type}</span>
+                <span>{label(it.type)}</span>
                 <span>·</span>
                 <span>{new Date(it.created_at).toLocaleDateString()}</span>
               </div>
@@ -705,7 +713,7 @@ export default function ClosetPage() {
                     className={fieldCls}
                   >
                     {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>{label(c)}</option>
                     ))}
                   </select>
 
@@ -717,7 +725,7 @@ export default function ClosetPage() {
                     >
                       <option value="">— subcategory —</option>
                       {SUBCATEGORIES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                        <option key={s} value={s}>{label(s)}</option>
                       ))}
                     </select>
                   )}
@@ -725,7 +733,7 @@ export default function ClosetPage() {
                   <select value={editWarmth} onChange={(e) => setEditWarmth(e.target.value)} className={fieldCls}>
                     <option value="">— warmth not set —</option>
                     {WARMTH_LEVELS.map((w) => (
-                      <option key={w} value={w}>{w}</option>
+                      <option key={w} value={w}>{label(w)}</option>
                     ))}
                   </select>
 
@@ -765,22 +773,22 @@ export default function ClosetPage() {
                 <>
                   {it.category && (
                     <div className="mt-2 font-utility text-[10px] uppercase tracking-wider text-denim">
-                      {it.category}{it.subcategory ? ` / ${it.subcategory}` : ""}
-                      {it.warmth ? ` · ${it.warmth}` : ""}
-                      {it.rain_ready ? " · rain-ready" : ""}
+                      {label(it.category)}{it.subcategory ? ` / ${label(it.subcategory)}` : ""}
+                      {it.warmth ? ` · ${label(it.warmth)}` : ""}
+                      {it.rain_ready ? " · Rain-ready" : ""}
                     </div>
                   )}
                   {it.formality && it.formality.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {it.formality.map((f) => (
-                        <span key={f} className={chipCls}>{pretty(f)}</span>
+                        <span key={f} className={chipCls}>{label(f)}</span>
                       ))}
                     </div>
                   )}
                   {it.occasions && it.occasions.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {it.occasions.map((o) => (
-                        <span key={o} className={`${chipCls} border-brass text-brass`}>{pretty(o)}</span>
+                        <span key={o} className={`${chipCls} border-brass text-brass`}>{label(o)}</span>
                       ))}
                     </div>
                   )}

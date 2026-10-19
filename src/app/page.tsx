@@ -1,14 +1,16 @@
 import NavBar from "@/components/NavBar";
 import Link from "next/link";
+import Icon, { type IconName } from "@/components/Icon";
 import { labelCls, pageCls, panelCls, primaryBtn } from "@/lib/ui";
 
-const STEPS = [
+const STEPS: { number: string; title: string; body: string; href: string; cta: string; icon: IconName }[] = [
   {
     number: "01",
     title: "Build your closet",
     body: "Add a photo of each piece. Style Me suggests the category, occasions and formality, and you confirm.",
     href: "/closet",
     cta: "Open closet",
+    icon: "closet",
   },
   {
     number: "02",
@@ -16,6 +18,7 @@ const STEPS = [
     body: "Pick an occasion and how dressed up you want to be. Swap any piece, or the whole outfit, until it feels right.",
     href: "/outfit",
     cta: "See outfits",
+    icon: "outfit",
   },
   {
     number: "03",
@@ -23,6 +26,7 @@ const STEPS = [
     body: "Upload a selfie and preview your picks over it.",
     href: "/try-on",
     cta: "Start try-on",
+    icon: "tryon",
   },
 ];
 
@@ -41,7 +45,10 @@ export default function Home() {
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {STEPS.map((s) => (
             <div key={s.href} className={`${panelCls} flex flex-col`}>
-              <span className={labelCls}>{s.number}</span>
+              <div className="flex items-center justify-between">
+                <span className={labelCls}>{s.number}</span>
+                <Icon name={s.icon} className="h-6 w-6 text-brass" />
+              </div>
               <h2 className="mt-2 font-display font-semibold text-xl">{s.title}</h2>
               <p className="mt-2 text-sm text-ink/70 flex-1">{s.body}</p>
               <Link href={s.href} className={`${primaryBtn} mt-5 self-start`}>

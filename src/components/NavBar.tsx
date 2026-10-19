@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import Icon, { type IconName } from "@/components/Icon";
 
 export default function NavBar() {
   const pathname = usePathname();
@@ -16,12 +17,12 @@ export default function NavBar() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const links = [
-    { href: "/closet", label: "Closet" },
-    { href: "/outfit", label: "Outfit" },
-    { href: "/try-on", label: "Try-On" },
-    { href: "/selfie", label: "Selfie" },
-    { href: "/auth", label: signedIn ? "Account" : "Sign in" },
+  const links: { href: string; label: string; icon: IconName }[] = [
+    { href: "/closet", label: "Closet", icon: "closet" },
+    { href: "/outfit", label: "Outfit", icon: "outfit" },
+    { href: "/try-on", label: "Try-On", icon: "tryon" },
+    { href: "/selfie", label: "Selfie", icon: "selfie" },
+    { href: "/auth", label: signedIn ? "Account" : "Sign in", icon: "account" },
   ];
 
   return (
@@ -35,7 +36,7 @@ export default function NavBar() {
 
         {/* Navigation Links */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-utility text-xs uppercase tracking-wider whitespace-nowrap">
-          {links.map(({ href, label }) => {
+          {links.map(({ href, label, icon }) => {
             const active = pathname === href;
             return (
               <Link
@@ -44,10 +45,11 @@ export default function NavBar() {
                 aria-current={active ? "page" : undefined}
                 className={
                   active
-                    ? "text-brass border-b border-brass pb-0.5"
-                    : "text-paper/80 hover:text-brass"
+                    ? "inline-flex items-center gap-1.5 text-brass border-b border-brass pb-0.5"
+                    : "inline-flex items-center gap-1.5 text-paper/80 hover:text-brass"
                 }
               >
+                <Icon name={icon} className="h-3.5 w-3.5" />
                 {label}
               </Link>
             );
