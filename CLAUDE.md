@@ -79,7 +79,10 @@ Bottom
 - Bulk photo upload and Closet filters are done (2026-10-19). Closet: "Add many photos at once" (`src/components/BulkUpload.tsx`; up to 200 photos, 3 at a time, each shrunk, AI-tagged and saved; photos the AI can't tag are saved with type `other` and no tags so the "Needs tags" filter finds them; if the AI service is down it stops asking and still saves). Closet filters: name search, category, and "Needs tags" (missing category/occasions/formality, warmth for garments, or subcategory for accessories). Stored photos are shrunk to max 1600px JPEG (`src/lib/photos.ts`, `src/lib/image.ts`) because Supabase free storage is only 1 GB.
 
 **Not done yet**
-- Photos for the 3 restored items (the user will add them all at once later).
+Everything planned is built and live as of 2026-10-19. What remains is on the user's side or needs their decision:
+- Photos: the user will bulk-load their photos at the very end (Closet > "Add many photos at once"). The 3 restored items (Blue Oxford Shirt, Black Jeans, White Sneakers) still have `image_path` values pointing at photo files that were lost with the old Supabase project, so signing them returns a harmless 400 and they show "No image"; give them photos with each card's "Add image" button (bulk upload creates NEW items, so photographing those 3 there would make duplicates).
+- Try-On is only a simple overlay of the item photo on the selfie (no background removal). A real AI try-on was never decided (it would need a paid external service and the user's account); ask before building it.
+- Saved outfits are not built. The `outfits` / `outfit_items` tables and their RLS policies exist (restored from the old project) but nothing uses them. Optional next feature.
 - AI tagging is ON as of 2026-10-18 (`ANTHROPIC_API_KEY` is set in Vercel Production and the account has credit). It was tested end to end with a drawn navy t-shirt picture (came back as "Navy Crew Tee", tee, top, casual). It has not yet been tried on real clothing photos; judge the quality when the user adds photos and move up to `claude-sonnet-5-5` in `route.ts` if suggestions are poor. If suggestions stop working, check the Anthropic Console credit balance first: an empty balance shows "AI suggestions are paused: the Anthropic account is out of credit".
 
 **Login (working as of 2026-10-18)**
