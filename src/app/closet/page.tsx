@@ -25,6 +25,7 @@ type Item = {
   occasions: string[] | null;
   formality: string[] | null;
   warmth: string | null;
+  rain_ready: boolean;
 };
 
 type ItemWithUrl = Item & { image_url?: string | null };
@@ -117,6 +118,7 @@ export default function ClosetPage() {
   const [occasions, setOccasions] = useState<string[]>([]);
   const [formality, setFormality] = useState<string[]>([]);
   const [warmth, setWarmth] = useState<string>("");
+  const [rainReady, setRainReady] = useState(false);
 
   // Add Item photo: one input opens the camera (phones), the other the photo library.
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -139,6 +141,7 @@ export default function ClosetPage() {
   const [editOccasions, setEditOccasions] = useState<string[]>([]);
   const [editFormality, setEditFormality] = useState<string[]>([]);
   const [editWarmth, setEditWarmth] = useState<string>("");
+  const [editRainReady, setEditRainReady] = useState(false);
 
   // Ask the server for tag suggestions for a photo and pre-fill the form with them.
   async function suggestFromPhoto(photo: File) {
@@ -171,6 +174,7 @@ export default function ClosetPage() {
       setOccasions(s.occasions);
       setFormality(s.formality);
       setWarmth(s.warmth ?? "");
+      setRainReady(s.rain_ready);
       setSuggestNote("AI filled these in from your photo. Check them before adding.");
     } catch {
       if (run === suggestRun.current) {
@@ -214,7 +218,7 @@ export default function ClosetPage() {
     setStatus("Loading...");
     const { data, error } = await supabase
       .from("items")
-      .select("id,name,type,color_primary,brand,created_at,image_path,category,subcategory,occasions,formality,warmth")
+      .select("id,name,type,color_primary,brand,created_at,image_path,category,subcategory,occasions,formality,warmth,rain_ready")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -282,6 +286,7 @@ export default function ClosetPage() {
       occasions: occasions.length ? occasions : null,
       formality: formality.length ? formality : null,
       warmth: warmth || null,
+      rain_ready: rainReady,
     });
 
     if (error) {
@@ -295,6 +300,7 @@ export default function ClosetPage() {
       setOccasions([]);
       setFormality([]);
       setWarmth("");
+      setRainReady(false);
       if (cameraInputRef.current) cameraInputRef.current.value = "";
       if (libraryInputRef.current) libraryInputRef.current.value = "";
       setStatus("Added!");
@@ -373,6 +379,7 @@ export default function ClosetPage() {
     setEditOccasions(it.occasions || []);
     setEditFormality(it.formality || []);
     setEditWarmth(it.warmth || "");
+    setEditRainReady(!!it.rain_ready);
   };
 
   const cancelEdit = () => {
@@ -394,6 +401,7 @@ export default function ClosetPage() {
         occasions: editOccasions.length ? editOccasions : null,
         formality: editFormality.length ? editFormality : null,
         warmth: editWarmth || null,
+        rain_ready: editRainReady,
       })
       .eq("id", itemId)
       .eq("user_id", user.id); // RLS safety
@@ -568,6 +576,11 @@ export default function ClosetPage() {
             </select>
           </label>
 
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-ink">
+            <input type="checkbox" className="accent-denim" checked={rainReady} onChange={(e) => setRainReady(e.target.checked)} />
+            Rain-ready (waterproof)
+          </label>
+
           <CheckGroup
             legend="Occasions"
             options={OCCASIONS}
@@ -694,6 +707,16 @@ export default function ClosetPage() {
                     ))}
                   </select>
 
+                  <label className="flex items-center gap-2 text-sm text-ink">
+                    <input
+                      type="checkbox"
+                      className="accent-denim"
+                      checked={editRainReady}
+                      onChange={(e) => setEditRainReady(e.target.checked)}
+                    />
+                    Rain-ready (waterproof)
+                  </label>
+
                   <CheckGroup
                     legend="Occasions"
                     options={OCCASIONS}
@@ -722,6 +745,7 @@ export default function ClosetPage() {
                     <div className="mt-2 font-utility text-[10px] uppercase tracking-wider text-denim">
                       {it.category}{it.subcategory ? ` / ${it.subcategory}` : ""}
                       {it.warmth ? ` · ${it.warmth}` : ""}
+                      {it.rain_ready ? " · rain-ready" : ""}
                     </div>
                   )}
                   {it.formality && it.formality.length > 0 && (

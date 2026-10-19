@@ -17,7 +17,7 @@ import {
   isSlot,
   nextCandidate,
   randomizeSelection,
-  weatherFellBack,
+  weatherNotes,
   type AccessorySlot,
   type Formality,
   type Occasion,
@@ -31,7 +31,9 @@ import {
   describeCode,
   fetchWeather,
   formatTemp,
+  isWet,
   searchPlaces,
+  type Conditions,
   type Place,
   type PlaceResult,
   type Unit,
@@ -142,6 +144,8 @@ export default function OutfitPage() {
   }, [place]);
 
   const band = weatherOn && weather ? bandFor(weather.feelsC) : null;
+  // What outfits are dressed for: how warm it feels, and whether it is wet.
+  const cond: Conditions | null = weatherOn && weather ? { band: bandFor(weather.feelsC), wet: isWet(weather) } : null;
 
   const choosePlace = (p: Place | null) => {
     setPlace(p);
@@ -215,7 +219,7 @@ export default function OutfitPage() {
 
       const { data: rawItems, error } = await supabase
         .from("items")
-        .select("id,name,category,subcategory,occasions,formality,warmth,image_path,created_at")
+        .select("id,name,category,subcategory,occasions,formality,warmth,rain_ready,image_path,created_at")
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -251,15 +255,18 @@ export default function OutfitPage() {
   const slotInfo = useMemo(() => {
     const info = {} as Record<Slot, { candidates: ItemWithUrl[]; current: ItemWithUrl | undefined }>;
     for (const slot of ALL_SLOTS) {
-      const candidates = candidatesFor(items, slot, occasion, formality, band);
+      const candidates = candidatesFor(items, slot, occasion, formality, cond);
       info[slot] = { candidates, current: chosenItem(items, slot, selection, candidates) };
     }
     return info;
-  }, [items, occasion, formality, selection, band]);
+    // cond is rebuilt each render, so depend on what it is made of
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, occasion, formality, selection, cond?.band, cond?.wet]);
 
   const missingRequired = REQUIRED_SLOTS.filter((slot) => !slotInfo[slot].current);
-  // Main garments where nothing suits the weather, so we are showing the other matches.
-  const fellBackSlots = REQUIRED_SLOTS.filter((slot) => weatherFellBack(items, slot, occasion, formality, band));
+  // Main garments where the weather couldn't be honoured, so we are showing other matches.
+  const fellBackSlots = REQUIRED_SLOTS.filter((slot) => weatherNotes(items, slot, occasion, formality, cond).warmth);
+  const noRainSlots = REQUIRED_SLOTS.filter((slot) => weatherNotes(items, slot, occasion, formality, cond).rain);
   const dismissedSlots = ACCESSORY_SLOTS.filter((slot) => dismissed.includes(slot) && slotInfo[slot].current);
 
   const autoSwap = (slot: Slot) => {
@@ -284,7 +291,7 @@ export default function OutfitPage() {
   };
 
   const swapEntireOutfit = () => {
-    setSelection(randomizeSelection(items, occasion, formality, selection, Math.random, band));
+    setSelection(randomizeSelection(items, occasion, formality, selection, Math.random, cond));
     setDismissed([]);
     setMenuSlot(null);
   };
@@ -369,6 +376,7 @@ export default function OutfitPage() {
           on={weatherOn}
           band={band}
           fellBack={fellBackSlots}
+          noRain={noRainSlots}
           onPlace={choosePlace}
           onUnit={changeUnit}
           onOn={changeWeatherOn}
@@ -443,6 +451,7 @@ function WeatherPanel({
   on,
   band,
   fellBack,
+  noRain,
   onPlace,
   onUnit,
   onOn,
@@ -454,6 +463,7 @@ function WeatherPanel({
   on: boolean;
   band: ReturnType<typeof bandFor> | null;
   fellBack: readonly string[];
+  noRain: readonly string[];
   onPlace: (p: Place | null) => void;
   onUnit: (u: Unit) => void;
   onOn: (on: boolean) => void;
@@ -528,7 +538,11 @@ function WeatherPanel({
           {on && band && (
             <p className="mt-1 text-xs text-paper/70">
               {BAND_ADVICE[band]}
-              {info?.wet ? " Wet out, so bring a rain layer." : ""}
+              {weather && isWet(weather)
+                ? noRain.length > 0
+                  ? ` Wet out, and nothing you own for ${noRain.join(" or ")} is rain-ready, so bring a rain layer or waterproof shoes.`
+                  : " Wet out: favouring rain-ready pieces."
+                : ""}
             </p>
           )}
           {on && fellBack.length > 0 && (

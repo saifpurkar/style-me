@@ -17,6 +17,14 @@ export type Weather = {
 
 export type Place = { name: string; lat: number; lon: number };
 
+// What outfits are dressed for: how warm it feels, and whether it is wet.
+export type Conditions = { band: Band; wet: boolean };
+
+// Wet = rain, drizzle, snow or storms in the forecast code, or any precipitation right now.
+export function isWet(w: Pick<Weather, "code" | "precipitationMm">): boolean {
+  return describeCode(w.code).wet || w.precipitationMm > 0;
+}
+
 export type Unit = "C" | "F";
 
 // "Feels like" temperature decides how warmly to dress.

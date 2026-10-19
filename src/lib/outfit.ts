@@ -1,5 +1,5 @@
 // Pure outfit logic (no React, no Supabase) so it can be tested on its own.
-import { fitsWeather, type Band } from "@/lib/weather";
+import { fitsWeather, type Conditions } from "@/lib/weather";
 
 export const OCCASIONS = ["work", "wfh", "dining", "date", "casual_hangout", "special_event", "travel", "outdoor", "gym"] as const;
 export type Occasion = (typeof OCCASIONS)[number];
@@ -34,6 +34,7 @@ export type OutfitItem = {
   occasions: string[] | null;
   formality: string[] | null;
   warmth?: string | null;
+  rain_ready?: boolean | null;
 };
 
 // The item the user has explicitly picked for a slot (by id). Slots without an
@@ -62,34 +63,53 @@ function weatherSlot(slot: Slot): slot is RequiredSlot {
   return slot === "top" || slot === "bottom" || slot === "footwear";
 }
 
-// Every item that fits this slot and the chosen occasion/formality, in the order given.
-// With a weather band, items too light or too heavy for it are left out, unless that
-// would leave the slot empty (then the occasion matches are all kept).
+// Narrow the occasion matches for a slot by the weather. Two preferences, each dropped
+// (and reported) if it would leave the slot empty:
+//  - warmth: items too light or too heavy for the temperature are left out;
+//  - rain: when it is wet, tops and footwear must be rain-ready.
+function narrow<T extends OutfitItem>(matching: T[], slot: Slot, cond: Conditions | null) {
+  if (!cond || !weatherSlot(slot) || matching.length === 0) {
+    return { pool: matching, warmthFellBack: false, rainFellBack: false };
+  }
+
+  let pool = matching;
+  const warm = pool.filter((it) => fitsWeather(it.warmth, cond.band, slot));
+  const warmthFellBack = warm.length === 0;
+  if (!warmthFellBack) pool = warm;
+
+  let rainFellBack = false;
+  if (cond.wet && (slot === "top" || slot === "footwear")) {
+    const dry = pool.filter((it) => it.rain_ready);
+    rainFellBack = dry.length === 0;
+    if (!rainFellBack) pool = dry;
+  }
+  return { pool, warmthFellBack, rainFellBack };
+}
+
+// Every item that fits this slot and the chosen occasion/formality, in the order given,
+// narrowed by the weather when conditions are given.
 export function candidatesFor<T extends OutfitItem>(
   items: T[],
   slot: Slot,
   occasion: Occasion,
   formality: Formality,
-  band: Band | null = null
+  cond: Conditions | null = null
 ): T[] {
   const matching = items.filter((it) => slotOf(it) === slot && matchesFilter(it, occasion, formality));
-  if (!band || !weatherSlot(slot)) return matching;
-  const fitting = matching.filter((it) => fitsWeather(it.warmth, band, slot));
-  return fitting.length > 0 ? fitting : matching;
+  return narrow(matching, slot, cond).pool;
 }
 
-// True when the weather filter would have emptied this slot, so we fell back to
-// the unfiltered matches. Lets the screen say so.
-export function weatherFellBack<T extends OutfitItem>(
+// Where the weather couldn't be honoured for a slot, so the screen can say so.
+export function weatherNotes<T extends OutfitItem>(
   items: T[],
   slot: Slot,
   occasion: Occasion,
   formality: Formality,
-  band: Band | null
-): boolean {
-  if (!band || !weatherSlot(slot)) return false;
+  cond: Conditions | null
+): { warmth: boolean; rain: boolean } {
   const matching = items.filter((it) => slotOf(it) === slot && matchesFilter(it, occasion, formality));
-  return matching.length > 0 && !matching.some((it) => fitsWeather(it.warmth, band, slot));
+  const { warmthFellBack, rainFellBack } = narrow(matching, slot, cond);
+  return { warmth: warmthFellBack, rain: rainFellBack };
 }
 
 // The item shown in a slot: the user's pick if it still exists and belongs in
@@ -125,11 +145,11 @@ export function randomizeSelection<T extends OutfitItem>(
   formality: Formality,
   current: Selection,
   rng: () => number = Math.random,
-  band: Band | null = null
+  cond: Conditions | null = null
 ): Selection {
   const next: Selection = {};
   for (const slot of ALL_SLOTS) {
-    const candidates = candidatesFor(items, slot, occasion, formality, band);
+    const candidates = candidatesFor(items, slot, occasion, formality, cond);
     if (candidates.length === 0) continue;
     const showing = chosenItem(items, slot, current, candidates);
     const options = candidates.length > 1 ? candidates.filter((c) => c.id !== showing?.id) : candidates;

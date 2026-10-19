@@ -17,6 +17,7 @@ export const TagSuggestionSchema = z.object({
   occasions: z.array(z.enum(OCCASIONS)).describe("Every occasion this item would realistically be worn for"),
   formality: z.array(z.enum(FORMALITY)).describe("Every formality level this item suits"),
   warmth: z.enum(WARMTH_LEVELS).nullable().describe("How warm the item is to wear; null for accessories where it doesn't apply"),
+  rain_ready: z.boolean().describe("True only if the item looks waterproof or water-resistant: rain jackets, trench coats, waterproof or rubber boots"),
 });
 
 export type TagSuggestion = z.infer<typeof TagSuggestionSchema>;
@@ -45,6 +46,8 @@ warmth: how warm the item is to wear.
 - heavy: jackets, coats, hoodies, thick knits, boots, lined or insulated pieces
 Use null only for accessories where warmth doesn't apply (a watch, belt, sunglasses). Hats, scarves and gloves can be light, medium or heavy.
 
+rain_ready: true only when the item is clearly meant to keep water out, such as a rain jacket, windbreaker with a hood, trench coat, waterproof or rubber boots, or a waterproof bag. Ordinary jackets, canvas sneakers, suede and knitwear are false. When unsure, use false.
+
 name: a short, plain name with the colour first, at most 4 words. Do not include brand names unless clearly visible.
 
 If the photo is unclear, still give your best honest answer rather than leaving fields empty.`;
@@ -70,5 +73,7 @@ export function cleanSuggestion(s: TagSuggestion): TagSuggestion {
     formality: Array.from(new Set(s.formality)),
     // The main garments always get a warmth so weather outfits can use them.
     warmth: s.warmth ?? (isAccessory ? null : "medium"),
+    // Outfits only look at rain-readiness for tops and footwear; bottoms are always false.
+    rain_ready: s.rain_ready && (s.category !== "bottom"),
   };
 }

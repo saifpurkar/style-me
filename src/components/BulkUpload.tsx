@@ -127,6 +127,7 @@ export default function BulkUpload({ onDone }: { onDone: () => void }) {
       occasions: suggestion?.occasions.length ? suggestion.occasions : null,
       formality: suggestion?.formality.length ? suggestion.formality : null,
       warmth: suggestion?.warmth ?? null,
+      rain_ready: suggestion?.rain_ready ?? false,
     });
 
     if (error) {
