@@ -540,7 +540,12 @@ function WeatherPanel({
               {BAND_ADVICE[band]}
               {weather && isWet(weather)
                 ? noRain.length > 0
-                  ? ` Wet out, and nothing you own for ${noRain.join(" or ")} is rain-ready, so bring a rain layer or waterproof shoes.`
+                  ? ` Wet out, and nothing you own for ${noRain.join(" or ")} is rain-ready, so ${[
+                      noRain.includes("top") && "bring a rain layer",
+                      noRain.includes("footwear") && "wear waterproof shoes",
+                    ]
+                      .filter(Boolean)
+                      .join(" and ")}.`
                   : " Wet out: favouring rain-ready pieces."
                 : ""}
             </p>
