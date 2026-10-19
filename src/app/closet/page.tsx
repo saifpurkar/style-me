@@ -140,6 +140,7 @@ export default function ClosetPage() {
   const [editSubcategory, setEditSubcategory] = useState<string>("");
   const [editOccasions, setEditOccasions] = useState<string[]>([]);
   const [editFormality, setEditFormality] = useState<string[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editWarmth, setEditWarmth] = useState<string>("");
   const [editRainReady, setEditRainReady] = useState(false);
 
@@ -384,6 +385,27 @@ export default function ClosetPage() {
 
   const cancelEdit = () => {
     setEditingId(null);
+  };
+
+  // Delete an item and its photo. Two taps (Delete, then "Yes, delete") so it can't happen by accident.
+  const deleteItem = async (it: ItemWithUrl) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setStatus("Please sign in at /auth, then return here.");
+      return;
+    }
+    const { error } = await supabase.from("items").delete().eq("id", it.id).eq("user_id", user.id);
+    if (error) {
+      setStatus("Delete failed: " + error.message);
+      return;
+    }
+    if (it.image_path) {
+      // Best effort: a leftover photo is harmless, so a failure here is not shown.
+      await supabase.storage.from("wardrobe").remove([it.image_path]);
+    }
+    setConfirmDeleteId(null);
+    setStatus(`Deleted "${it.name}".`);
+    await loadItems();
   };
 
   const saveEdit = async (itemId: string) => {
@@ -763,7 +785,7 @@ export default function ClosetPage() {
                     </div>
                   )}
 
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {pickSlot ? (
                       <button className={primaryBtn} onClick={() => pickItem(it)} type="button">
                         Use this item
@@ -776,6 +798,20 @@ export default function ClosetPage() {
                         <button className={outlineBtn} onClick={() => startEdit(it)} type="button">
                           Edit tags
                         </button>
+                        {confirmDeleteId === it.id ? (
+                          <>
+                            <button className={primaryBtn} onClick={() => deleteItem(it)} type="button">
+                              Yes, delete
+                            </button>
+                            <button className={outlineBtn} onClick={() => setConfirmDeleteId(null)} type="button">
+                              Keep
+                            </button>
+                          </>
+                        ) : (
+                          <button className={outlineBtn} onClick={() => setConfirmDeleteId(it.id)} type="button">
+                            Delete
+                          </button>
+                        )}
                       </>
                     )}
                   </div>

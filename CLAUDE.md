@@ -80,6 +80,8 @@ Bottom
 
 - Phone use (2026-10-19): the site is an installable PWA, so the user installs it on their Pixel 9 Pro from Chrome (menu > "Install app" / "Add to Home screen") instead of an APK. Pieces: `src/app/manifest.ts` (name, standalone, charcoal colours), generated icons at `/icons/{180,192,512}.png` (`src/app/icons/[file]/route.tsx`, drawn with `next/og`), a pass-through service worker `public/sw.js` (caches nothing, so updates are always immediate) registered by `src/components/RegisterServiceWorker.tsx`, and `viewport.themeColor` in `layout.tsx`. The layout was checked at 360 and 375 px wide: the NavBar stacks into two rows below `sm`, outfit cards are `w-[26vw] min-w-[5.5rem] max-w-36` so three fit per row, and buttons are taller on phones. A real APK (e.g. a Trusted Web Activity via PWABuilder or Bubblewrap) was not built because the installed PWA does the same job; revisit only if a Play Store listing is wanted.
 
+- Delete item (2026-10-19): each Closet card has Delete, then "Yes, delete" (two taps). It removes the item row and its photo from storage; saved outfit picks for a deleted item fall back automatically.
+
 **Not done yet**
 Everything planned is built and live as of 2026-10-19. What remains is on the user's side or needs their decision:
 - Photos: the user will bulk-load their photos at the very end (Closet > "Add many photos at once"). The 3 restored items (Blue Oxford Shirt, Black Jeans, White Sneakers) still have `image_path` values pointing at photo files that were lost with the old Supabase project, so signing them returns a harmless 400 and they show "No image"; give them photos with each card's "Add image" button (bulk upload creates NEW items, so photographing those 3 there would make duplicates).
