@@ -398,11 +398,11 @@ export default function OutfitPage() {
         )}
 
         {!status && missingRequired.length === 0 && (
-          <div className="mt-8 bg-paper border border-dashed border-ink/40 rounded-[2px] p-6 flex flex-col items-center gap-4">
+          <div className="mt-8 bg-paper border border-dashed border-ink/40 rounded-[2px] p-3 sm:p-6 flex flex-col items-center gap-4">
             {card("headgear")}
             {card("eyewear")}
 
-            <div className="flex items-start justify-center gap-4">
+            <div className="flex items-start justify-center gap-2 sm:gap-4">
               {card("watch")}
               {card("top")}
               {card("bracelet")}
@@ -412,7 +412,7 @@ export default function OutfitPage() {
 
             {card("bottom")}
 
-            <div className="flex items-start justify-center gap-4">
+            <div className="flex items-start justify-center gap-2 sm:gap-4">
               {card("footwear")}
               {card("bag")}
             </div>
@@ -440,7 +440,7 @@ export default function OutfitPage() {
 }
 
 const darkBtn =
-  "font-utility text-[10px] uppercase tracking-wider border border-brass text-brass px-3 py-1.5 rounded-[2px] hover:bg-brass hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed";
+  "font-utility text-[10px] uppercase tracking-wider border border-brass text-brass px-3 py-2.5 sm:py-1.5 rounded-[2px] hover:bg-brass hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed";
 const linkBtn = "font-utility text-[10px] uppercase tracking-wider text-paper/70 underline hover:text-brass";
 
 function WeatherPanel({
@@ -649,7 +649,8 @@ function OutfitCard({
     : "border-brass text-brass hover:bg-brass hover:text-ink";
 
   return (
-    <div data-swap-root className="relative w-36 border border-ink/20 rounded-[2px] p-2 bg-paper">
+    // On a phone three cards must fit in one row, so the width follows the screen (26vw), up to 9rem.
+    <div data-swap-root className="relative w-[26vw] min-w-[5.5rem] max-w-36 border border-ink/20 rounded-[2px] p-2 bg-paper">
       <div className="flex items-center justify-between mb-1">
         <span className={`font-utility text-[10px] uppercase tracking-wider ${accent}`}>{slot}</span>
         {onDismiss && (

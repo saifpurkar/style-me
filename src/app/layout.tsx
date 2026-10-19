@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import RegisterServiceWorker from "@/components/RegisterServiceWorker";
 import { Geist, Geist_Mono, Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -32,6 +33,16 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Style Me",
   description: "Your AI wardrobe assistant: catalog your clothes and get outfits for any occasion.",
+  applicationName: "Style Me",
+  icons: { icon: "/icons/192.png", apple: "/icons/180.png" },
+  appleWebApp: { capable: true, title: "Style Me", statusBarStyle: "black-translucent" },
+};
+
+// Colours the phone's status bar to match the app when it is installed.
+export const viewport: Viewport = {
+  themeColor: "#33302b",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -45,6 +56,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${inter.variable} ${ibmPlexMono.variable} antialiased`}
       >
         {children}
+        <RegisterServiceWorker />
       </body>
     </html>
   );

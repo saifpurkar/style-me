@@ -26,14 +26,15 @@ export default function NavBar() {
 
   return (
     <header className="w-full border-b border-paper/15 bg-charcoal sticky top-0 z-50">
-      <nav className="mx-auto max-w-6xl flex items-center justify-between px-4 py-3">
+      {/* On a phone the links drop under the logo; from sm up they sit beside it. */}
+      <nav className="mx-auto max-w-6xl flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Logo + App Name */}
-        <Link href="/" className="font-display font-semibold text-xl text-paper">
+        <Link href="/" className="font-display font-semibold text-xl text-paper whitespace-nowrap">
           Style Me
         </Link>
 
         {/* Navigation Links */}
-        <div className="flex items-center gap-5 font-utility text-xs uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-utility text-xs uppercase tracking-wider whitespace-nowrap">
           {links.map(({ href, label }) => {
             const active = pathname === href;
             return (

@@ -4,10 +4,11 @@
 export const fieldCls =
   "border border-ink/30 bg-paper text-ink px-3 py-2 rounded-[2px] text-sm focus:outline-none focus:ring-1 focus:ring-denim";
 export const labelCls = "font-utility text-[10px] uppercase tracking-wider text-ink/60";
+// Buttons are a little taller on phones (py-2.5) so they are easy to tap.
 export const primaryBtn =
-  "font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2 rounded-[2px] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed";
+  "font-utility text-xs uppercase tracking-wider bg-brass text-ink px-4 py-2.5 sm:py-2 rounded-[2px] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed";
 export const outlineBtn =
-  "font-utility text-[10px] uppercase tracking-wider border border-denim text-denim px-3 py-1.5 rounded-[2px] hover:bg-denim hover:text-paper";
+  "font-utility text-[10px] uppercase tracking-wider border border-denim text-denim px-3 py-2.5 sm:py-1.5 rounded-[2px] hover:bg-denim hover:text-paper";
 export const chipCls =
   "font-utility text-[10px] uppercase tracking-wider border border-ink/25 text-ink/80 px-1.5 py-0.5 rounded-[2px]";
 
